@@ -234,11 +234,38 @@ a {
 }
 
 .project-item {
+  position: relative;
   display: grid;
   gap: 0.4rem;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: var(--space-2);
+}
+
+.delete-project-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.project-item:hover .delete-project-btn {
+  opacity: 1;
+}
+
+.delete-project-btn:hover {
+  color: #f44336;
+  background: var(--color-surface-soft);
 }
 
 .project-item[data-active='true'] {
