@@ -1,0 +1,128 @@
+.skills-sidebar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: fit-content;
+}
+
+.skills-sidebar h3 {
+  margin: var(--space-1);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-cat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-cat-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: background 0.15s ease;
+}
+
+.sidebar-cat-list li:hover {
+  background: var(--color-surface-soft);
+}
+
+.sidebar-cat-list li[data-active='true'] {
+  background: var(--color-surface-strong);
+  font-weight: 700;
+}
+
+.sidebar-cat-list li .cat-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-cat-list li input {
+  flex: 1;
+  border: 1px solid var(--color-outline);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  outline: 0;
+  width: 100%;
+}
+
+.cat-actions {
+  display: none;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 8px;
+  color: var(--color-muted);
+}
+
+.sidebar-cat-list li:hover .cat-actions {
+  display: flex;
+}
+
+.cat-actions svg:hover {
+  color: var(--color-ink);
+}
+
+.count-badge {
+  margin-left: auto;
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 99px;
+}
+
+.sidebar-cat-list li[data-active='true'] .count-badge {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.create-category-form {
+  display: flex;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  background: var(--color-canvas);
+}
+
+.create-category-form input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 0.85rem;
+  padding: 4px;
+  flex: 1;
+  color: var(--color-ink);
+}
+
+.create-category-form button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-category-form button:hover {
+  color: var(--color-primary);
+}
