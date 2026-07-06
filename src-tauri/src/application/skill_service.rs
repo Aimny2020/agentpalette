@@ -105,6 +105,40 @@ impl SkillService {
         Ok(())
     }
 
+    pub fn toggle_project_skill(&self, project_id: &str, skill_id: &str, enabled: bool) -> DomainResult<()> {
+        // 1. Save state to database
+        self.repo.save_project_skill(project_id, skill_id, enabled)?;
+
+        // 2. Fetch project directory path
+        let project_path_str = match self.repo.get_project_path(project_id)? {
+            Some(path) => path,
+            None => return Err(DomainError::Database(format!("Project with ID {} not found", project_id))),
+        };
+        let project_path = Path::new(&project_path_str);
+        
+        // 3. Define target .agentforge/skills/<skill_id> folder
+        let dest_dir = project_path.join(".agentforge").join("skills").join(skill_id);
+
+        if enabled {
+            // Copy from global library (~/.agent-forge/skills/<skill_id>) to project path
+            let src_dir = self.skills_dir.join(skill_id);
+            if src_dir.exists() {
+                self.copy_dir_all(&src_dir, &dest_dir)
+                    .map_err(|e| DomainError::Database(format!("Failed to copy skill: {}", e)))?;
+            } else {
+                return Err(DomainError::Database(format!("Global skill directory not found: {:?}", src_dir)));
+            }
+        } else {
+            // Delete folder under project path
+            if dest_dir.exists() {
+                fs::remove_dir_all(&dest_dir)
+                    .map_err(|e| DomainError::Database(format!("Failed to remove skill directory: {}", e)))?;
+            }
+        }
+
+        Ok(())
+    }
+
     fn copy_dir_all(&self, src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
         fs::create_dir_all(&dst)?;
         for entry in fs::read_dir(src)? {
