@@ -8,6 +8,7 @@ use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::health::{DatabasePort, DatabaseStatus};
 use crate::domain::ports::SkillRepository;
 use crate::domain::skill::{Category, UserSkillMeta};
+use crate::domain::project::Project;
 
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/001_initial.sql");
 const SKILLS_MIGRATION: &str = include_str!("../../migrations/002_skills.sql");
@@ -75,6 +76,63 @@ impl DatabasePort for SqliteDatabase {
 }
 
 impl SkillRepository for SqliteDatabase {
+    fn get_projects(&self) -> DomainResult<Vec<Project>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT id, name, path, created_at FROM projects ORDER BY created_at ASC")
+            .map_err(database_error)?;
+        
+        let iter = stmt
+            .query_map([], |r| {
+                Ok(Project {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    path: r.get(2)?,
+                    created_at: r.get(3)?,
+                })
+            })
+            .map_err(database_error)?;
+        
+        let mut list = Vec::new();
+        for item in iter {
+            list.push(item.map_err(database_error)?);
+        }
+        Ok(list)
+    }
+
+    fn get_project_path(&self, id: &str) -> DomainResult<Option<String>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT path FROM projects WHERE id = ?1")
+            .map_err(database_error)?;
+        
+        let row = stmt
+            .query_row([id], |r| r.get::<_, String>(0))
+            .optional()
+            .map_err(database_error)?;
+        Ok(row)
+    }
+
+    fn create_project(&self, project: &Project) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "INSERT INTO projects (id, name, path, created_at) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![project.id, project.name, project.path, project.created_at],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+
     fn get_user_meta(&self, skill_id: &str) -> DomainResult<Option<UserSkillMeta>> {
         let connection = self
             .connection

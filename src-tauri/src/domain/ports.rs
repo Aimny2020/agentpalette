@@ -16,6 +16,10 @@ pub trait ProcessManager: Send + Sync {
 }
 
 pub trait SkillRepository: Send + Sync {
+    fn get_projects(&self) -> DomainResult<Vec<crate::domain::project::Project>>;
+    fn get_project_path(&self, id: &str) -> DomainResult<Option<String>>;
+    fn create_project(&self, project: &crate::domain::project::Project) -> DomainResult<()>;
+
     fn get_user_meta(&self, skill_id: &str) -> DomainResult<Option<crate::domain::skill::UserSkillMeta>>;
     fn save_user_meta(&self, skill_id: &str, category_id: Option<&str>, user_notes: Option<&str>) -> DomainResult<()>;
     fn delete_user_meta(&self, skill_id: &str) -> DomainResult<()>;
