@@ -49,7 +49,8 @@ pub fn run() {
             delete_category,
             get_projects,
             add_project,
-            select_directory
+            select_directory,
+            delete_project
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgentForge");

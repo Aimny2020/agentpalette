@@ -43,3 +43,11 @@ pub async fn select_directory() -> Result<Option<String>, CommandError> {
 
     Ok(result.map(|path| path.path().to_string_lossy().to_string()))
 }
+
+#[tauri::command]
+pub async fn delete_project(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), CommandError> {
+    state.repo.delete_project(&id).map_err(CommandError::from)
+}
