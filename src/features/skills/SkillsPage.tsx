@@ -38,8 +38,8 @@ export function SkillsPage() {
 
   // Mutations
   const updateMetaMut = useMutation({
-    mutationFn: ({ id, cat, notes, enabled }: { id: string; cat: string | null; notes: string | null; enabled: boolean }) =>
-      updateSkillMeta(id, cat, notes, enabled),
+    mutationFn: ({ id, cat, notes }: { id: string; cat: string | null; notes: string | null }) =>
+      updateSkillMeta(id, cat, notes),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['skills'] }),
   });
 
@@ -163,15 +163,6 @@ export function SkillsPage() {
                   skill={s}
                   categoryName={getCategoryName(s.category_id)}
                   onOpenDetail={() => setActiveDetailSkill(s)}
-                  onToggleEnable={(e) => {
-                    e.stopPropagation();
-                    updateMetaMut.mutate({
-                      id: s.id,
-                      cat: s.category_id || null,
-                      notes: s.user_notes || null,
-                      enabled: !s.is_enabled,
-                    });
-                  }}
                   onDelete={(e) => {
                     e.stopPropagation();
                     if (confirm(`确定要删除技能 "${s.metadata.name}" 吗？此操作物理删除本地文件且不可逆。`)) {
@@ -190,8 +181,8 @@ export function SkillsPage() {
           skill={activeDetailSkill}
           categories={categories}
           onClose={() => setActiveDetailSkill(null)}
-          onUpdate={(cat, notes, enabled) =>
-            updateMetaMut.mutate({ id: activeDetailSkill.id, cat, notes, enabled })
+          onUpdate={(cat, notes) =>
+            updateMetaMut.mutate({ id: activeDetailSkill.id, cat, notes })
           }
         />
       )}
