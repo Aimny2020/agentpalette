@@ -9,6 +9,7 @@ use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::health::{DatabasePort, DatabaseStatus};
 
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/001_initial.sql");
+const SKILLS_MIGRATION: &str = include_str!("../../migrations/002_skills.sql");
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,
@@ -32,6 +33,9 @@ impl SqliteDatabase {
             .map_err(database_error)?;
         connection
             .execute_batch(INITIAL_MIGRATION)
+            .map_err(database_error)?;
+        connection
+            .execute_batch(SKILLS_MIGRATION)
             .map_err(database_error)?;
         Ok(Self {
             connection: Mutex::new(connection),
@@ -87,5 +91,7 @@ mod tests {
         assert!(database.has_table("_migrations").unwrap());
         assert!(database.has_table("projects").unwrap());
         assert!(database.has_table("task_runs").unwrap());
+        assert!(database.has_table("categories").unwrap());
+        assert!(database.has_table("skills_user_meta").unwrap());
     }
 }
