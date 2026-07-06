@@ -133,6 +133,17 @@ impl SkillRepository for SqliteDatabase {
         Ok(())
     }
 
+    fn delete_project(&self, id: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute("DELETE FROM projects WHERE id = ?1", [id])
+            .map_err(database_error)?;
+        Ok(())
+    }
+
     fn get_user_meta(&self, skill_id: &str) -> DomainResult<Option<UserSkillMeta>> {
         let connection = self
             .connection
