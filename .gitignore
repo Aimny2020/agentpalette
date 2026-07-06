@@ -10,3 +10,5 @@ src-tauri/gen/
 .env
 .env.*
 !.env.example
+.agents/
+
