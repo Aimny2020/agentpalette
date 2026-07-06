@@ -32,14 +32,30 @@ pub async fn update_skill_meta(
     skill_id: String,
     category_id: Option<String>,
     user_notes: Option<String>,
-    is_enabled: bool,
 ) -> Result<(), CommandError> {
     state.repo.save_user_meta(
         &skill_id,
         category_id.as_deref(),
         user_notes.as_deref(),
-        is_enabled,
     ).map_err(CommandError::from)
+}
+
+#[tauri::command]
+pub async fn get_project_skills(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<Vec<String>, CommandError> {
+    state.repo.get_project_skills(&project_id).map_err(CommandError::from)
+}
+
+#[tauri::command]
+pub async fn toggle_project_skill(
+    state: State<'_, AppState>,
+    project_id: String,
+    skill_id: String,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    state.repo.save_project_skill(&project_id, &skill_id, enabled).map_err(CommandError::from)
 }
 
 #[tauri::command]

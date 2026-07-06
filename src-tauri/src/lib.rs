@@ -40,6 +40,8 @@ pub fn run() {
             import_skill,
             delete_skill,
             update_skill_meta,
+            get_project_skills,
+            toggle_project_skill,
             get_categories,
             create_category,
             rename_category,
