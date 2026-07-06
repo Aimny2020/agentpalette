@@ -155,3 +155,11 @@ export async function selectDirectory(): Promise<string | null> {
     throw normalizeError(error);
   }
 }
+
+export async function deleteProject(id: string): Promise<void> {
+  try {
+    await invoke<void>('delete_project', { id });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
