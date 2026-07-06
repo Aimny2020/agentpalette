@@ -2,11 +2,12 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
-#[cfg(test)]
 use rusqlite::OptionalExtension;
 
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::health::{DatabasePort, DatabaseStatus};
+use crate::domain::ports::SkillRepository;
+use crate::domain::skill::{Category, UserSkillMeta};
 
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/001_initial.sql");
 const SKILLS_MIGRATION: &str = include_str!("../../migrations/002_skills.sql");
@@ -70,6 +71,135 @@ impl DatabasePort for SqliteDatabase {
             .query_row("SELECT 1", [], |_| Ok(()))
             .map_err(database_error)?;
         Ok(DatabaseStatus::Ready)
+    }
+}
+
+impl SkillRepository for SqliteDatabase {
+    fn get_user_meta(&self, skill_id: &str) -> DomainResult<Option<UserSkillMeta>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT category_id, user_notes, is_enabled FROM skills_user_meta WHERE skill_id = ?1")
+            .map_err(database_error)?;
+        
+        let row = stmt
+            .query_row([skill_id], |r| {
+                let category_id: Option<String> = r.get(0)?;
+                let user_notes: Option<String> = r.get(1)?;
+                let is_enabled_int: i32 = r.get(2)?;
+                Ok(UserSkillMeta {
+                    category_id,
+                    user_notes,
+                    is_enabled: is_enabled_int != 0,
+                })
+            })
+            .optional()
+            .map_err(database_error)?;
+        
+        Ok(row)
+    }
+
+    fn save_user_meta(&self, skill_id: &str, category_id: Option<&str>, user_notes: Option<&str>, is_enabled: bool) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let is_enabled_int = if is_enabled { 1 } else { 0 };
+        let now = chrono::Utc::now().to_rfc3339();
+        connection
+            .execute(
+                "INSERT INTO skills_user_meta (skill_id, category_id, user_notes, is_enabled, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(skill_id) DO UPDATE SET
+                   category_id = excluded.category_id,
+                   user_notes = excluded.user_notes,
+                   is_enabled = excluded.is_enabled,
+                   updated_at = excluded.updated_at",
+                rusqlite::params![skill_id, category_id, user_notes, is_enabled_int, now],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+
+    fn delete_user_meta(&self, skill_id: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute("DELETE FROM skills_user_meta WHERE skill_id = ?1", [skill_id])
+            .map_err(database_error)?;
+        Ok(())
+    }
+
+    fn get_categories(&self) -> DomainResult<Vec<Category>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT id, name, created_at FROM categories ORDER BY created_at ASC")
+            .map_err(database_error)?;
+        let iter = stmt
+            .query_map([], |r| {
+                Ok(Category {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    created_at: r.get(2)?,
+                })
+            })
+            .map_err(database_error)?;
+        
+        let mut list = Vec::new();
+        for c in iter {
+            list.push(c.map_err(database_error)?);
+        }
+        Ok(list)
+    }
+
+    fn create_category(&self, id: &str, name: &str, created_at: &str) -> DomainResult<Category> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "INSERT INTO categories (id, name, created_at) VALUES (?1, ?2, ?3)",
+                [id, name, created_at],
+            )
+            .map_err(database_error)?;
+        Ok(Category {
+            id: id.to_string(),
+            name: name.to_string(),
+            created_at: created_at.to_string(),
+        })
+    }
+
+    fn rename_category(&self, id: &str, name: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "UPDATE categories SET name = ?1 WHERE id = ?2",
+                [name, id],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+
+    fn delete_category(&self, id: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute("DELETE FROM categories WHERE id = ?1", [id])
+            .map_err(database_error)?;
+        Ok(())
     }
 }
 
