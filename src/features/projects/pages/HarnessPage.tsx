@@ -1,13 +1,14 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSkills, getProjectSkills, toggleProjectSkill } from '../../../shared/api/tauriClient';
+import { useProjectStore } from '../../../shared/store/projectStore';
 import { Card } from '../../../shared/ui/Card';
+import { PageState } from '../../../shared/ui/PageState';
 import './harness.css';
-
-const MOCK_PROJECT_ID = 'agent-forge-core-id';
 
 export function HarnessPage() {
   const queryClient = useQueryClient();
+  const { activeProjectId } = useProjectStore();
 
   // Query global skills list
   const { data: skills = [], isLoading: skillsLoading } = useQuery({
@@ -15,20 +16,31 @@ export function HarnessPage() {
     queryFn: getSkills,
   });
 
-  // Query enabled skills for this project
+  // Query enabled skills for the active project
   const { data: enabledSkillIds = [], isLoading: enabledLoading } = useQuery({
-    queryKey: ['projectSkills', MOCK_PROJECT_ID],
-    queryFn: () => getProjectSkills(MOCK_PROJECT_ID),
+    queryKey: ['projectSkills', activeProjectId],
+    queryFn: () => getProjectSkills(activeProjectId || ''),
+    enabled: !!activeProjectId,
   });
 
   // Toggle skill mutation
   const toggleSkillMut = useMutation({
     mutationFn: ({ skillId, enabled }: { skillId: string; enabled: boolean }) =>
-      toggleProjectSkill(MOCK_PROJECT_ID, skillId, enabled),
+      toggleProjectSkill(activeProjectId || '', skillId, enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projectSkills', MOCK_PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: ['projectSkills', activeProjectId] });
     },
   });
+
+  if (!activeProjectId) {
+    return (
+      <PageState
+        state="empty"
+        title="尚未选择任何项目"
+        description="请在左侧侧边栏中选择或添加一个项目，以配置其工程规则与技能。"
+      />
+    );
+  }
 
   if (skillsLoading || enabledLoading) {
     return (
@@ -47,7 +59,7 @@ export function HarnessPage() {
     <div className="page-stack">
       <Card>
         <h2>项目工程规则 (Harness)</h2>
-        <p className="muted-copy">在当前项目下选择并启用全局技能库（Skills），赋能此项目下的 Agent。</p>
+        <p className="muted-copy">在此项目中选择需要启用的技能，启动后相应的技能配置将同步到项目文件夹中。</p>
       </Card>
 
       <Card>
@@ -68,9 +80,8 @@ export function HarnessPage() {
                     checked={isEnabled}
                     onChange={(e) => handleCheckboxChange(skill.id, e.target.checked)}
                   />
-                  <label htmlFor={`skill-chk-${skill.id}`}>
+                  <label htmlFor={`skill-chk-${skill.id}`} style={{ cursor: 'pointer', userSelect: 'none' }}>
                     <strong>{skill.metadata.name}</strong>
-                    <span>{skill.metadata.description}</span>
                   </label>
                 </div>
               );
