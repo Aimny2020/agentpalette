@@ -129,6 +129,7 @@ pub fn scan_skill_root(id: &str, root: &Path) -> DomainResult<DiscoveredSkill> {
             relative_path: skill.relative_directory,
             metadata: skill.metadata,
             html_content: skill.html_content,
+            custom_description: None,
         })
         .collect();
 

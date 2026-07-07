@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-import type { CommandFailure, HealthReport, ImportInspection, Skill, SkillUpdate, Category, Project } from './types';
+import type { CommandFailure, HealthReport, ImportInspection, Skill, SkillUpdate, Category, Project, SkillDescriptionRecord, DescriptionsImportPreview } from './types';
 
 export class AppError extends Error {
   constructor(
@@ -202,6 +202,61 @@ export async function selectDirectory(): Promise<string | null> {
 export async function deleteProject(id: string): Promise<void> {
   try {
     await invoke<void>('delete_project', { id });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function saveCustomDescription(
+  targetId: string,
+  targetKind: 'package' | 'member',
+  description: string | null,
+): Promise<void> {
+  try {
+    await invoke<void>('save_custom_description', { targetId, targetKind, description });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function exportCustomDescriptions(): Promise<string | null> {
+  try {
+    return await invoke<string | null>('export_custom_descriptions');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function previewCustomDescriptionsImport(): Promise<DescriptionsImportPreview | null> {
+  try {
+    return await invoke<DescriptionsImportPreview | null>('preview_custom_descriptions_import');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function confirmCustomDescriptionsImport(
+  records: SkillDescriptionRecord[],
+  conflictStrategy: 'keep_newer' | 'keep_local' | 'keep_import',
+): Promise<void> {
+  try {
+    await invoke<void>('confirm_custom_descriptions_import', { records, conflictStrategy });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getUnassociatedDescriptionsCount(): Promise<number> {
+  try {
+    return await invoke<number>('get_unassociated_descriptions_count');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function clearUnassociatedDescriptions(): Promise<number> {
+  try {
+    return await invoke<number>('clear_unassociated_descriptions');
   } catch (error) {
     throw normalizeError(error);
   }

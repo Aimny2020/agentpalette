@@ -8,8 +8,8 @@ use crate::application::skill_scanner::scan_skill_root;
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::ports::SkillRepository;
 use crate::domain::skill::{
-    ImportInspection, Skill, SkillKind, SkillPackageRecord, SkillSourceInfo, SkillUpdate,
-    SourceKind, UpdateStatus,
+    ImportInspection, Skill, SkillKind, SkillMember, SkillPackageRecord, SkillSourceInfo,
+    SkillUpdate, SourceKind, UpdateStatus,
 };
 
 pub struct SkillService {
@@ -122,6 +122,35 @@ mod tests {
             Ok(())
         }
         fn delete_category(&self, _id: &str) -> DomainResult<()> {
+            Ok(())
+        }
+        fn get_custom_description(&self, _target_id: &str) -> DomainResult<Option<String>> {
+            Ok(None)
+        }
+        fn save_custom_description(
+            &self,
+            _target_id: &str,
+            _target_kind: &str,
+            _custom_description: &str,
+        ) -> DomainResult<()> {
+            Ok(())
+        }
+        fn delete_custom_description(&self, _target_id: &str) -> DomainResult<()> {
+            Ok(())
+        }
+        fn get_all_custom_descriptions(
+            &self,
+        ) -> DomainResult<Vec<crate::domain::skill::SkillDescriptionRecord>> {
+            Ok(Vec::new())
+        }
+        fn import_custom_descriptions(
+            &self,
+            _records: Vec<crate::domain::skill::SkillDescriptionRecord>,
+            _conflict_strategy: &str,
+        ) -> DomainResult<()> {
+            Ok(())
+        }
+        fn delete_descriptions(&self, _target_ids: &[String]) -> DomainResult<()> {
             Ok(())
         }
     }
@@ -329,6 +358,19 @@ impl SkillService {
                     Some(meta) => (meta.category_id, meta.user_notes),
                     None => (None, None),
                 };
+                let custom_description = self.repo.get_custom_description(&skill_id)?;
+                let mut members = Vec::new();
+                for member in discovered.members {
+                    let m_desc = self.repo.get_custom_description(&member.id)?;
+                    members.push(SkillMember {
+                        id: member.id,
+                        relative_path: member.relative_path,
+                        metadata: member.metadata,
+                        html_content: member.html_content,
+                        custom_description: m_desc,
+                    });
+                }
+
                 let filesystem_source = git_source(&path).unwrap_or_else(SkillSourceInfo::local);
                 let mut record = self
                     .repo
@@ -384,7 +426,7 @@ impl SkillService {
                     kind: discovered.kind,
                     metadata: discovered.metadata,
                     html_content: discovered.html_content,
-                    members: discovered.members,
+                    members,
                     category_id,
                     user_notes,
                     source,
@@ -393,6 +435,7 @@ impl SkillService {
                     has_executable_content: discovered.has_executable_content,
                     trusted,
                     warnings: discovered.warnings,
+                    custom_description,
                 });
             }
         }
@@ -707,7 +750,7 @@ impl SkillService {
             let parts: Vec<&str> = skill_id.split("::").collect();
             let pack_id = parts[0];
             let sub_path = parts[1];
-            
+
             let pack_dest_dir = project_path.join(".agents").join("skills").join(pack_id);
             let pack_src_dir = self.skills_dir.join(pack_id);
 
@@ -742,8 +785,10 @@ impl SkillService {
                 // Copy package folder if not exists
                 if !pack_dest_dir.exists() {
                     self.copy_dir_all(&pack_src_dir, &pack_dest_dir)
-                        .map_err(|e| DomainError::Database(format!("Failed to copy skill: {}", e)))?;
-                    
+                        .map_err(|e| {
+                            DomainError::Database(format!("Failed to copy skill: {}", e))
+                        })?;
+
                     let commit = self
                         .repo
                         .get_skill_package(pack_id)?
@@ -765,10 +810,11 @@ impl SkillService {
                 let pack_src_dir = self.skills_dir.join(pack_id);
                 if pack_src_dir.exists() {
                     let _ = scan_skill_root(pack_id, &pack_src_dir)?;
-                    
+
                     // Rename its SKILL.md to SKILL.md.disabled
                     let member_skill_md = pack_dest_dir.join(sub_path).join("SKILL.md");
-                    let member_skill_md_disabled = pack_dest_dir.join(sub_path).join("SKILL.md.disabled");
+                    let member_skill_md_disabled =
+                        pack_dest_dir.join(sub_path).join("SKILL.md.disabled");
                     if member_skill_md.exists() {
                         fs::rename(&member_skill_md, &member_skill_md_disabled)
                             .map_err(|e| DomainError::Database(e.to_string()))?;
@@ -776,7 +822,9 @@ impl SkillService {
 
                     // Check if other sub-skills of the same package are still enabled
                     let enabled_skills = self.repo.get_project_skills(project_id)?;
-                    let has_other_enabled = enabled_skills.iter().any(|id| id.starts_with(&format!("{pack_id}::")));
+                    let has_other_enabled = enabled_skills
+                        .iter()
+                        .any(|id| id.starts_with(&format!("{pack_id}::")));
 
                     if !has_other_enabled {
                         // No other sub-skills are enabled, clean up the package folder and parent database row
@@ -811,7 +859,7 @@ impl SkillService {
                                 )));
                             }
                         }
-                        
+
                         // Enable package row and all member rows in DB
                         self.repo.save_project_skill(project_id, skill_id, true)?;
                         for member in &discovered.members {
@@ -823,8 +871,9 @@ impl SkillService {
                             fs::remove_dir_all(&dest_dir)
                                 .map_err(|e| DomainError::Database(e.to_string()))?;
                         }
-                        self.copy_dir_all(&src_dir, &dest_dir)
-                            .map_err(|e| DomainError::Database(format!("Failed to copy skill: {}", e)))?;
+                        self.copy_dir_all(&src_dir, &dest_dir).map_err(|e| {
+                            DomainError::Database(format!("Failed to copy skill: {}", e))
+                        })?;
 
                         // Activate all SKILL.md files (by syncing)
                         self.sync_package_members(project_id, &discovered, &dest_dir)?;
@@ -843,7 +892,8 @@ impl SkillService {
                         // Disable package and all members
                         self.repo.save_project_skill(project_id, skill_id, false)?;
                         for member in &discovered.members {
-                            self.repo.save_project_skill(project_id, &member.id, false)?;
+                            self.repo
+                                .save_project_skill(project_id, &member.id, false)?;
                         }
                         if dest_dir.exists() {
                             fs::remove_dir_all(&dest_dir)
@@ -869,8 +919,9 @@ impl SkillService {
                             fs::remove_dir_all(&dest_dir)
                                 .map_err(|e| DomainError::Database(e.to_string()))?;
                         }
-                        self.copy_dir_all(&src_dir, &dest_dir)
-                            .map_err(|e| DomainError::Database(format!("Failed to copy skill: {}", e)))?;
+                        self.copy_dir_all(&src_dir, &dest_dir).map_err(|e| {
+                            DomainError::Database(format!("Failed to copy skill: {}", e))
+                        })?;
                         self.repo.save_project_skill(project_id, skill_id, true)?;
                         let commit = self
                             .repo
@@ -911,8 +962,10 @@ impl SkillService {
         for member in &discovered.members {
             let is_member_enabled = enabled_skills.contains(&member.id);
             let member_skill_md = dest_dir.join(&member.relative_path).join("SKILL.md");
-            let member_skill_md_disabled = dest_dir.join(&member.relative_path).join("SKILL.md.disabled");
-            
+            let member_skill_md_disabled = dest_dir
+                .join(&member.relative_path)
+                .join("SKILL.md.disabled");
+
             if is_member_enabled {
                 if member_skill_md_disabled.exists() && !member_skill_md.exists() {
                     fs::rename(&member_skill_md_disabled, &member_skill_md)

@@ -38,4 +38,23 @@ describe('SkillCard', () => {
     expect(screen.getByText('有更新')).toBeInTheDocument();
     expect(screen.getByText('需要信任')).toBeInTheDocument();
   });
+
+  it('renders custom description and custom badge if provided', () => {
+    const skillWithCustom = {
+      ...pack,
+      custom_description: '这是自定义的技能包说明'
+    };
+    
+    render(
+      <SkillCard
+        skill={skillWithCustom}
+        categoryName="设计"
+        onOpenDetail={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('自定义')).toBeInTheDocument();
+    expect(screen.getByText('这是自定义的技能包说明')).toBeInTheDocument();
+    expect(screen.queryByText('Design skills')).not.toBeInTheDocument();
+  });
 });

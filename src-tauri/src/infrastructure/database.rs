@@ -13,6 +13,8 @@ use crate::domain::skill::{Category, SkillPackageRecord, SourceKind, UserSkillMe
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/001_initial.sql");
 const SKILLS_MIGRATION: &str = include_str!("../../migrations/002_skills.sql");
 const SKILL_PACKAGES_MIGRATION: &str = include_str!("../../migrations/003_skill_packages.sql");
+const SKILL_DESCRIPTIONS_MIGRATION: &str =
+    include_str!("../../migrations/004_skill_descriptions.sql");
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,
@@ -42,6 +44,9 @@ impl SqliteDatabase {
             .map_err(database_error)?;
         connection
             .execute_batch(SKILL_PACKAGES_MIGRATION)
+            .map_err(database_error)?;
+        connection
+            .execute_batch(SKILL_DESCRIPTIONS_MIGRATION)
             .map_err(database_error)?;
         Ok(Self {
             connection: Mutex::new(connection),
@@ -455,6 +460,163 @@ impl SkillRepository for SqliteDatabase {
             .map_err(database_error)?;
         Ok(())
     }
+
+    fn get_custom_description(&self, target_id: &str) -> DomainResult<Option<String>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let row = connection
+            .query_row(
+                "SELECT custom_description FROM skill_descriptions WHERE target_id = ?1",
+                [target_id],
+                |r| r.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(database_error)?;
+        Ok(row)
+    }
+
+    fn save_custom_description(
+        &self,
+        target_id: &str,
+        target_kind: &str,
+        custom_description: &str,
+    ) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let now = chrono::Utc::now().to_rfc3339();
+        let tx = connection.transaction().map_err(database_error)?;
+        tx.execute(
+            "INSERT INTO skill_descriptions (target_id, target_kind, custom_description, updated_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(target_id) DO UPDATE SET
+               custom_description = excluded.custom_description,
+               updated_at = excluded.updated_at",
+            rusqlite::params![target_id, target_kind, custom_description, now],
+        )
+        .map_err(database_error)?;
+        tx.commit().map_err(database_error)?;
+        Ok(())
+    }
+
+    fn delete_custom_description(&self, target_id: &str) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let tx = connection.transaction().map_err(database_error)?;
+        tx.execute(
+            "DELETE FROM skill_descriptions WHERE target_id = ?1",
+            [target_id],
+        )
+        .map_err(database_error)?;
+        tx.commit().map_err(database_error)?;
+        Ok(())
+    }
+
+    fn get_all_custom_descriptions(
+        &self,
+    ) -> DomainResult<Vec<crate::domain::skill::SkillDescriptionRecord>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT target_id, target_kind, custom_description, updated_at FROM skill_descriptions ORDER BY target_id ASC")
+            .map_err(database_error)?;
+        let iter = stmt
+            .query_map([], |row| {
+                Ok(crate::domain::skill::SkillDescriptionRecord {
+                    target_id: row.get(0)?,
+                    target_kind: row.get(1)?,
+                    custom_description: row.get(2)?,
+                    updated_at: row.get(3)?,
+                })
+            })
+            .map_err(database_error)?;
+        let mut list = Vec::new();
+        for item in iter {
+            list.push(item.map_err(database_error)?);
+        }
+        Ok(list)
+    }
+
+    fn import_custom_descriptions(
+        &self,
+        records: Vec<crate::domain::skill::SkillDescriptionRecord>,
+        conflict_strategy: &str,
+    ) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let tx = connection.transaction().map_err(database_error)?;
+        for record in records {
+            let local_updated_at: Option<String> = tx
+                .query_row(
+                    "SELECT updated_at FROM skill_descriptions WHERE target_id = ?1",
+                    [&record.target_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(database_error)?;
+
+            let write_record = match local_updated_at {
+                None => true,
+                Some(local_time) => match conflict_strategy {
+                    "keep_local" => false,
+                    "keep_import" => true,
+                    _ => {
+                        // "keep_newer" (default)
+                        if let (Ok(import_dt), Ok(local_dt)) = (
+                            chrono::DateTime::parse_from_rfc3339(&record.updated_at),
+                            chrono::DateTime::parse_from_rfc3339(&local_time),
+                        ) {
+                            import_dt > local_dt
+                        } else {
+                            record.updated_at > local_time
+                        }
+                    }
+                },
+            };
+
+            if write_record {
+                tx.execute(
+                    "INSERT INTO skill_descriptions (target_id, target_kind, custom_description, updated_at)
+                     VALUES (?1, ?2, ?3, ?4)
+                     ON CONFLICT(target_id) DO UPDATE SET
+                       custom_description = excluded.custom_description,
+                       updated_at = excluded.updated_at",
+                    rusqlite::params![
+                        record.target_id,
+                        record.target_kind,
+                        record.custom_description,
+                        record.updated_at
+                    ],
+                )
+                .map_err(database_error)?;
+            }
+        }
+        tx.commit().map_err(database_error)?;
+        Ok(())
+    }
+
+    fn delete_descriptions(&self, target_ids: &[String]) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let tx = connection.transaction().map_err(database_error)?;
+        for id in target_ids {
+            tx.execute("DELETE FROM skill_descriptions WHERE target_id = ?1", [id])
+                .map_err(database_error)?;
+        }
+        tx.commit().map_err(database_error)?;
+        Ok(())
+    }
 }
 
 fn database_error(error: rusqlite::Error) -> DomainError {
@@ -482,6 +644,7 @@ mod tests {
         assert!(database.has_table("project_skills").unwrap());
         assert!(database.has_table("skill_packages").unwrap());
         assert!(database.has_table("project_skill_states").unwrap());
+        assert!(database.has_table("skill_descriptions").unwrap());
     }
 
     #[test]
@@ -510,5 +673,35 @@ mod tests {
                 .unwrap(),
             Some("superpowers".into())
         );
+    }
+
+    #[test]
+    fn manages_custom_descriptions_lifecycle() {
+        let database = SqliteDatabase::open_in_memory().unwrap();
+
+        // Initially empty
+        assert_eq!(database.get_custom_description("t-1").unwrap(), None);
+
+        // Save new
+        database
+            .save_custom_description("t-1", "package", "My Test Package")
+            .unwrap();
+        assert_eq!(
+            database.get_custom_description("t-1").unwrap(),
+            Some("My Test Package".into())
+        );
+
+        // Update existing
+        database
+            .save_custom_description("t-1", "package", "My Updated Package")
+            .unwrap();
+        assert_eq!(
+            database.get_custom_description("t-1").unwrap(),
+            Some("My Updated Package".into())
+        );
+
+        // Delete
+        database.delete_custom_description("t-1").unwrap();
+        assert_eq!(database.get_custom_description("t-1").unwrap(), None);
     }
 }

@@ -57,7 +57,13 @@ pub fn run() {
             get_projects,
             add_project,
             select_directory,
-            delete_project
+            delete_project,
+            save_custom_description,
+            export_custom_descriptions,
+            preview_custom_descriptions_import,
+            confirm_custom_descriptions_import,
+            get_unassociated_descriptions_count,
+            clear_unassociated_descriptions
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgentForge");

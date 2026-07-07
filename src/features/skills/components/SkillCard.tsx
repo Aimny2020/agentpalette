@@ -22,6 +22,7 @@ export function SkillCard({
   onUpdate,
 }: Props) {
   const metadata = member?.metadata ?? skill.metadata;
+  const customDescription = member ? member.custom_description : skill.custom_description;
   return (
     <div className="skill-card" onClick={onOpenDetail}>
       <div className="skill-card-header">
@@ -46,7 +47,16 @@ export function SkillCard({
         </div>
       </div>
       <h4>{metadata.name}</h4>
-      <p className="skill-description">{metadata.description}</p>
+      <p className="skill-description">
+        {customDescription ? (
+          <>
+            <span className="custom-badge">自定义</span>
+            {customDescription}
+          </>
+        ) : (
+          metadata.description
+        )}
+      </p>
       <div className="skill-state-row">
         {skill.kind === 'pack' && !member && <span>{skill.members.length} 个 Skills</span>}
         {updateStatus === 'available' && <span className="state-pill state-pill--update">有更新</span>}

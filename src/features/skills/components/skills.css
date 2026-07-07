@@ -686,3 +686,17 @@
 .button--danger:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-danger) 85%, black) !important;
 }
+
+.custom-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-primary-ink);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+}

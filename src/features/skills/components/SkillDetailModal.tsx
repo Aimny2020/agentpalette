@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Package, ShieldCheck, X } from 'lucide-react';
 import { Skill, SkillMember, Category, SkillUpdateStatus } from '../../../shared/api/types';
+import { saveCustomDescription } from '../../../shared/api/tauriClient';
 
 interface Props {
   skill: Skill;
@@ -23,21 +24,70 @@ export function SkillDetailModal({
   onTrust,
   onInstallUpdate,
 }: Props) {
-  const [notes, setNotes] = useState(skill.user_notes || '');
   const [catId, setCatId] = useState(skill.category_id || '');
   const [selectedMember, setSelectedMember] = useState<SkillMember | undefined>(initialMember);
 
-  const handleSave = () => {
-    onUpdate(catId || null, notes || null);
+  // Track custom descriptions for current editing target
+  const getTargetInitialDesc = (member?: SkillMember) => {
+    return member ? (member.custom_description || '') : (skill.custom_description || '');
+  };
+
+  const [customDesc, setCustomDesc] = useState(getTargetInitialDesc(initialMember));
+  const [initialCustomDesc, setInitialCustomDesc] = useState(getTargetInitialDesc(initialMember));
+
+  const isDescDirty = customDesc !== initialCustomDesc;
+  const isMetaDirty = !selectedMember && (catId !== (skill.category_id || ''));
+  const isLengthExceeded = customDesc.length > 2000;
+
+  const checkDirtyAndProceed = () => {
+    if (isDescDirty) {
+      return window.confirm('您对“技能说明”的修改尚未保存，确定要放弃修改吗？');
+    }
+    return true;
+  };
+
+  const handleSwitchTarget = (nextMember: SkillMember | undefined) => {
+    if (!checkDirtyAndProceed()) return;
+    setSelectedMember(nextMember);
+    const desc = getTargetInitialDesc(nextMember);
+    setCustomDesc(desc);
+    setInitialCustomDesc(desc);
+  };
+
+  const handleCloseAttempt = () => {
+    if (isDescDirty || isMetaDirty) {
+      if (!window.confirm('您有未保存的更改，确定要关闭并放弃所有更改吗？')) {
+        return;
+      }
+    }
     onClose();
   };
 
+  const handleSave = async () => {
+    if (isLengthExceeded) return;
+    try {
+      if (selectedMember) {
+        await saveCustomDescription(selectedMember.id, 'member', customDesc || null);
+        selectedMember.custom_description = customDesc || undefined;
+      } else {
+        await onUpdate(catId || null, skill.user_notes || null);
+        await saveCustomDescription(skill.id, 'package', customDesc || null);
+        skill.custom_description = customDesc || undefined;
+        skill.category_id = catId || undefined;
+      }
+      setInitialCustomDesc(customDesc);
+      onClose();
+    } catch (err) {
+      alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleCloseAttempt}>
       <div className="modal-body" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{skill.kind === 'pack' ? '技能扩展包' : '技能详情'}</h3>
-          <button className="close-btn" onClick={onClose}>
+          <button className="close-btn" onClick={handleCloseAttempt}>
             <X size={20} />
           </button>
         </div>
@@ -45,7 +95,7 @@ export function SkillDetailModal({
           <div className="modal-markdown-area">
             {selectedMember ? (
               <>
-                <button className="member-back" onClick={() => setSelectedMember(undefined)}>
+                <button className="member-back" onClick={() => handleSwitchTarget(undefined)}>
                   ← 返回 {skill.metadata.name}
                 </button>
                 <h1>{selectedMember.metadata.name}</h1>
@@ -73,13 +123,22 @@ export function SkillDetailModal({
                         <div
                           key={member.id}
                           className="pack-member-card"
-                          onClick={() => setSelectedMember(member)}
+                          onClick={() => handleSwitchTarget(member)}
                         >
                           <div className="pack-member-card__header">
                             <Package size={16} className="pack-member-card__icon" />
                             <h4>{member.metadata.name}</h4>
                           </div>
-                          <p className="pack-member-card__desc">{member.metadata.description || '暂无描述信息'}</p>
+                          <p className="pack-member-card__desc">
+                            {member.custom_description ? (
+                              <>
+                                <span className="custom-badge" style={{ fontSize: '0.6rem', padding: '1px 3px', marginRight: '4px' }}>自定义</span>
+                                {member.custom_description}
+                              </>
+                            ) : (
+                              member.metadata.description || '暂无描述信息'
+                            )}
+                          </p>
                           <div className="pack-member-card__footer">
                             <span className="pack-member-card__version">
                               {member.metadata.version ? `v${member.metadata.version}` : ''}
@@ -101,26 +160,41 @@ export function SkillDetailModal({
                 {skill.warnings.map((warning) => <p key={warning}>{warning}</p>)}
               </div>
             )}
-            <div className="form-group">
-              <label>设置分类</label>
-              <select value={catId} onChange={(e) => setCatId(e.target.value)}>
-                <option value="">未分类</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            
+            {!selectedMember && (
+              <div className="form-group">
+                <label>设置分类</label>
+                <select value={catId} onChange={(e) => setCatId(e.target.value)}>
+                  <option value="">未分类</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="form-group flex-fill">
-              <label>技能使用说明与备注</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ margin: 0 }}>技能说明</label>
+                <span style={{ fontSize: '0.8rem', color: isLengthExceeded ? 'var(--color-danger, #cf222e)' : 'var(--color-muted)' }}>
+                  {customDesc.length}/2000
+                </span>
+              </div>
               <textarea
-                placeholder="在此添加该技能的个性化使用备注或说明..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                style={{ minHeight: '18rem' }}
+                placeholder="添加中文技能说明，以快速说明用途并支持搜索（纯文本，限2000字）..."
+                value={customDesc}
+                onChange={(e) => setCustomDesc(e.target.value)}
+                style={{ minHeight: '12rem', resize: 'vertical' }}
               />
+              {isLengthExceeded && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #cf222e)', marginTop: '4px' }}>
+                  技能说明不能超过 2000 个字符
+                </span>
+              )}
             </div>
+            
             <div className="actions-footer">
               <div className="actions-footer__left" style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {updateStatus === 'available' && onInstallUpdate && (
@@ -142,10 +216,10 @@ export function SkillDetailModal({
                   )
                 )}
               </div>
-              <button className="button button--secondary" onClick={onClose}>
+              <button className="button button--secondary" onClick={handleCloseAttempt}>
                 取消
               </button>
-              <button className="button button--primary" onClick={handleSave}>
+              <button className="button button--primary" onClick={handleSave} disabled={isLengthExceeded}>
                 保存更改
               </button>
             </div>

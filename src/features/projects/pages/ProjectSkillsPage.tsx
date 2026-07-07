@@ -139,7 +139,11 @@ export function ProjectSkillsPage() {
                         <span className="project-skill-pack-label">
                           技能扩展包 · {enabledMembersCount}/{skill.members.length} 启用
                         </span>
-                      ) : null}
+                      ) : (
+                        <span className="project-skill-pack-label" style={{ visibility: 'hidden', userSelect: 'none' }}>
+                          占位
+                        </span>
+                      )}
                       {isUntrusted && (
                         <span className="project-skill-pack-label" style={{ color: '#cf222e', marginLeft: '8px' }}>
                           (包含可执行内容，请在 Skills 管理页授权信任后启用)
@@ -188,17 +192,10 @@ export function ProjectSkillsPage() {
                               style={{ 
                                 cursor: isUntrusted ? 'not-allowed' : 'pointer', 
                                 userSelect: 'none', 
-                                display: 'flex', 
-                                flexDirection: 'column',
                                 fontSize: '0.85rem' 
                               }}
                             >
                               <strong style={{ color: 'var(--color-ink)', fontWeight: 500 }}>{member.metadata.name}</strong>
-                              {member.metadata.description && (
-                                <span className="project-skill-pack-label" style={{ fontSize: '0.7rem' }}>
-                                  {member.metadata.description}
-                                </span>
-                              )}
                             </label>
                           </div>
                         );

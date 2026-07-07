@@ -68,6 +68,24 @@ pub trait SkillRepository: Send + Sync {
     ) -> DomainResult<crate::domain::skill::Category>;
     fn rename_category(&self, id: &str, name: &str) -> DomainResult<()>;
     fn delete_category(&self, id: &str) -> DomainResult<()>;
+
+    fn get_custom_description(&self, target_id: &str) -> DomainResult<Option<String>>;
+    fn save_custom_description(
+        &self,
+        target_id: &str,
+        target_kind: &str,
+        custom_description: &str,
+    ) -> DomainResult<()>;
+    fn delete_custom_description(&self, target_id: &str) -> DomainResult<()>;
+    fn get_all_custom_descriptions(
+        &self,
+    ) -> DomainResult<Vec<crate::domain::skill::SkillDescriptionRecord>>;
+    fn import_custom_descriptions(
+        &self,
+        records: Vec<crate::domain::skill::SkillDescriptionRecord>,
+        conflict_strategy: &str,
+    ) -> DomainResult<()>;
+    fn delete_descriptions(&self, target_ids: &[String]) -> DomainResult<()>;
 }
 
 #[cfg(test)]

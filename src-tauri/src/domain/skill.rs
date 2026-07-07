@@ -30,6 +30,7 @@ pub struct SkillMember {
     pub relative_path: String,
     pub metadata: SkillMetadata,
     pub html_content: String,
+    pub custom_description: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,6 +132,7 @@ pub struct Skill {
     pub has_executable_content: bool,
     pub trusted: bool,
     pub warnings: Vec<String>,
+    pub custom_description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,4 +146,13 @@ pub struct Category {
 pub struct UserSkillMeta {
     pub category_id: Option<String>,
     pub user_notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SkillDescriptionRecord {
+    pub target_id: String,
+    pub target_kind: String, // 'package' or 'member'
+    #[serde(rename = "description")]
+    pub custom_description: String,
+    pub updated_at: String,
 }

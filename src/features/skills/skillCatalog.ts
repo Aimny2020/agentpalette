@@ -20,13 +20,17 @@ export function projectCatalog(
     if (!categoryMatches(skill)) return [];
     if (!query) return [{ type: 'skill', skill }];
 
-    const parentText = `${skill.metadata.name} ${skill.metadata.description}`.toLocaleLowerCase();
+    const customDesc = skill.custom_description || '';
+    const parentText = `${skill.metadata.name} ${skill.metadata.description} ${customDesc}`.toLocaleLowerCase();
     if (parentText.includes(query)) return [{ type: 'skill', skill }];
 
     return skill.members
-      .filter((member) =>
-        `${member.metadata.name} ${member.metadata.description}`.toLocaleLowerCase().includes(query),
-      )
+      .filter((member) => {
+        const memberCustomDesc = member.custom_description || '';
+        return `${member.metadata.name} ${member.metadata.description} ${memberCustomDesc}`
+          .toLocaleLowerCase()
+          .includes(query);
+      })
       .map((member) => ({ type: 'member' as const, skill, member }));
   });
 }

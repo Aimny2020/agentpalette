@@ -29,6 +29,7 @@ export interface SkillMember {
   relative_path: string;
   metadata: SkillMetadata;
   html_content: string;
+  custom_description?: string;
 }
 
 export interface SkillSourceInfo {
@@ -52,6 +53,7 @@ export interface Skill {
   has_executable_content: boolean;
   trusted: boolean;
   warnings: string[];
+  custom_description?: string;
 }
 
 export interface SkillUpdate {
@@ -82,4 +84,29 @@ export interface Project {
   name: string;
   path: string;
   created_at: string;
+}
+
+export interface SkillDescriptionRecord {
+  target_id: string;
+  target_kind: 'package' | 'member';
+  description: string;
+  updated_at: string;
+}
+
+export interface InvalidRecordInfo {
+  target_id?: string;
+  target_kind?: string;
+  description?: string;
+  reason: string;
+}
+
+export interface DescriptionsImportPreview {
+  file_path: string;
+  total_count: number;
+  new_count: number;
+  overwrite_count: number;
+  skip_count: number;
+  unassociated_count: number;
+  invalid_records: InvalidRecordInfo[];
+  valid_records: SkillDescriptionRecord[];
 }
