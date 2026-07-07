@@ -52,13 +52,7 @@ export function ProjectSkillsPage() {
     );
   }
 
-  const handleCheckboxChange = async (skill: Skill, isChecked: boolean) => {
-    if (isChecked && skill.has_executable_content && !skill.trusted) {
-      const accepted = confirm(`“${skill.metadata.name}” 包含脚本或可执行内容。是否信任当前版本并启用？`);
-      if (!accepted) return;
-      await trustSkill(skill.id);
-      await queryClient.invalidateQueries({ queryKey: ['skills'] });
-    }
+  const handleCheckboxChange = (skill: Skill, isChecked: boolean) => {
     toggleSkillMut.mutate({ skillId: skill.id, enabled: isChecked });
   };
 
@@ -74,17 +68,32 @@ export function ProjectSkillsPage() {
           <div className="harness-skills-list">
             {skills.map((skill) => {
               const isEnabled = enabledSkillIds.includes(skill.id);
+              const isUntrusted = skill.has_executable_content && !skill.trusted;
               return (
-                <div className="harness-skill-row" key={skill.id} data-enabled={isEnabled}>
+                <div 
+                  className="harness-skill-row" 
+                  key={skill.id} 
+                  data-enabled={isEnabled}
+                  style={isUntrusted ? { opacity: 0.6 } : undefined}
+                >
                   <input
                     type="checkbox"
                     id={`skill-chk-${skill.id}`}
                     checked={isEnabled}
+                    disabled={isUntrusted}
                     onChange={(e) => handleCheckboxChange(skill, e.target.checked)}
                   />
-                  <label htmlFor={`skill-chk-${skill.id}`} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  <label 
+                    htmlFor={isUntrusted ? undefined : `skill-chk-${skill.id}`}
+                    style={{ cursor: isUntrusted ? 'not-allowed' : 'pointer', userSelect: 'none' }}
+                  >
                     <strong>{skill.metadata.name}</strong>
                     {skill.kind === 'pack' && <span className="project-skill-pack-label">技能扩展包 · {skill.members.length} 个 Skills</span>}
+                    {isUntrusted && (
+                      <span className="project-skill-pack-label" style={{ color: '#cf222e', marginLeft: '8px' }}>
+                        (包含可执行内容，请在 Skills 管理页授权信任后启用)
+                      </span>
+                    )}
                   </label>
                 </div>
               );
