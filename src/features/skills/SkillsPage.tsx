@@ -28,7 +28,7 @@ export function SkillsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [activeDetail, setActiveDetail] = useState<{ skill: Skill; member?: SkillMember } | null>(null);
+  const [activeDetailId, setActiveDetailId] = useState<{ skillId: string; memberId?: string } | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Queries
@@ -36,6 +36,15 @@ export function SkillsPage() {
     queryKey: ['skills'],
     queryFn: getSkills,
   });
+
+  const activeDetail = activeDetailId
+    ? (() => {
+        const skill = skills.find((s) => s.id === activeDetailId.skillId);
+        if (!skill) return null;
+        const member = skill.members.find((m) => m.id === activeDetailId.memberId);
+        return { skill, member };
+      })()
+    : null;
 
   const { data: categories = [], isLoading: catsLoading } = useQuery({
     queryKey: ['categories'],
@@ -193,7 +202,7 @@ export function SkillsPage() {
                   member={result.type === 'member' ? result.member : undefined}
                   categoryName={getCategoryName(result.skill.category_id)}
                   updateStatus={updateStatus.get(result.skill.id) ?? result.skill.update_status}
-                  onOpenDetail={() => setActiveDetail(result.type === 'member' ? { skill: result.skill, member: result.member } : { skill: result.skill })}
+                  onOpenDetail={() => setActiveDetailId(result.type === 'member' ? { skillId: result.skill.id, memberId: result.member.id } : { skillId: result.skill.id })}
                   onUpdate={result.skill.source.kind === 'git' ? (e) => {
                     e.stopPropagation();
                     if (confirm(`更新 "${result.skill.metadata.name}"？所有未修改的项目副本也会同步。`)) {
@@ -219,7 +228,7 @@ export function SkillsPage() {
           initialMember={activeDetail.member}
           categories={categories}
           updateStatus={updateStatus.get(activeDetail.skill.id) ?? activeDetail.skill.update_status}
-          onClose={() => setActiveDetail(null)}
+          onClose={() => setActiveDetailId(null)}
           onUpdate={(cat, notes) =>
             updateMetaMut.mutate({ id: activeDetail.skill.id, cat, notes })
           }

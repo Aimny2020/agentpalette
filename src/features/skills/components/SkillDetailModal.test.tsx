@@ -99,4 +99,47 @@ describe('SkillDetailModal', () => {
     expect(screen.getByText('Sub Skill One')).toBeInTheDocument();
     expect(screen.queryByText(/返回/)).not.toBeInTheDocument();
   });
+
+  it('renders "信任此版本" button when untrusted and "已信任此版本" badge when trusted', () => {
+    const untrustedSkill = {
+      ...mockSkillPack,
+      has_executable_content: true,
+      trusted: false,
+    };
+
+    const { rerender } = render(
+      <SkillDetailModal
+        skill={untrustedSkill}
+        categories={mockCategories}
+        onClose={vi.fn()}
+        onUpdate={vi.fn()}
+        onTrust={vi.fn()}
+      />
+    );
+
+    // Should render "信任此版本" button
+    expect(screen.getByText('信任此版本')).toBeInTheDocument();
+    expect(screen.queryByText('已信任此版本')).not.toBeInTheDocument();
+
+    // Rerender with trusted: true
+    const trustedSkill = {
+      ...mockSkillPack,
+      has_executable_content: true,
+      trusted: true,
+    };
+
+    rerender(
+      <SkillDetailModal
+        skill={trustedSkill}
+        categories={mockCategories}
+        onClose={vi.fn()}
+        onUpdate={vi.fn()}
+        onTrust={vi.fn()}
+      />
+    );
+
+    // Should now render "已信任此版本" badge, and "信任此版本" button should disappear
+    expect(screen.getByText('已信任此版本')).toBeInTheDocument();
+    expect(screen.queryByText('信任此版本')).not.toBeInTheDocument();
+  });
 });

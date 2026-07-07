@@ -101,10 +101,18 @@ export function SkillDetailModal({
                   <Download size={15} /> 安装更新
                 </button>
               )}
-              {skill.has_executable_content && !skill.trusted && onTrust && (
-                <button className="button button--secondary" onClick={onTrust}>
-                  <ShieldCheck size={15} /> 信任此版本
-                </button>
+              {skill.has_executable_content && (
+                skill.trusted ? (
+                  <span className="trusted-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--color-primary-ink)', fontWeight: 500, padding: '4px 8px' }}>
+                    <ShieldCheck size={15} /> 已信任此版本
+                  </span>
+                ) : (
+                  onTrust && (
+                    <button className="button button--secondary" onClick={onTrust}>
+                      <ShieldCheck size={15} /> 信任此版本
+                    </button>
+                  )
+                )
               )}
             </div>
             {skill.warnings.length > 0 && (
