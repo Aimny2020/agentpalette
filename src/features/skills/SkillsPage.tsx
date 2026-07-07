@@ -20,6 +20,7 @@ import { SkillsSidebar } from './components/SkillsSidebar';
 import { SkillCard } from './components/SkillCard';
 import { SkillDetailModal } from './components/SkillDetailModal';
 import { ImportSkillModal } from './components/ImportSkillModal';
+import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
 import { Skill, SkillMember } from '../../shared/api/types';
 import { projectCatalog } from './skillCatalog';
 import './components/skills.css';
@@ -30,6 +31,7 @@ export function SkillsPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeDetailId, setActiveDetailId] = useState<{ skillId: string; memberId?: string } | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
 
   // Queries
   const { data: skills = [], isLoading: skillsLoading } = useQuery({
@@ -211,9 +213,7 @@ export function SkillsPage() {
                   } : undefined}
                   onDelete={result.type === 'skill' ? (e) => {
                     e.stopPropagation();
-                    if (confirm(`确定要删除 "${result.skill.metadata.name}" 吗？此操作不可逆。`)) {
-                      deleteSkillMut.mutate(result.skill.id);
-                    }
+                    setDeleteTarget(result.skill);
                   } : undefined}
                 />
               ))}
@@ -241,6 +241,20 @@ export function SkillsPage() {
         <ImportSkillModal
           onClose={() => setIsImportOpen(false)}
           onImport={(source, type) => importSkillMut.mutate({ source, type })}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          skill={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async (force) => {
+            if (force) {
+              await deleteEverywhereMut.mutateAsync(deleteTarget.id);
+            } else {
+              await deleteSkillMut.mutateAsync(deleteTarget.id);
+            }
+          }}
         />
       )}
     </div>
