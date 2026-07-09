@@ -379,6 +379,69 @@ mod tests {
         assert_eq!(new_record.normalized_source.as_deref(), Some("github.com/mattpocock/skills"));
         assert!(db.get_skill_package("skills").unwrap().is_none());
     }
+
+    #[test]
+    fn manages_project_skills_json_dynamically() {
+        let fixture = Fixture::new();
+        // Create project and fake skill pack
+        let db = Arc::new(crate::infrastructure::database::SqliteDatabase::open_in_memory().unwrap());
+        let project = crate::domain::project::Project {
+            id: "p1".into(),
+            name: "Project 1".into(),
+            path: fixture.0.to_str().unwrap().into(),
+            created_at: "2026-07-09T00:00:00Z".into(),
+        };
+        db.create_project(&project).unwrap();
+
+        // Put a fake pack in global skills dir
+        let pack_dir = fixture.0.join("obra-superpowers");
+        fs::create_dir_all(pack_dir.join("skills").join("brainstorming")).unwrap();
+        fs::write(pack_dir.join("skills").join("brainstorming").join("SKILL.md"), "---\nname: Brainstorming\ndescription: desc\n---\n").unwrap();
+        // Make sure it scans as pack (needs > 1 definition)
+        fs::create_dir_all(pack_dir.join("skills").join("executing")).unwrap();
+        fs::write(pack_dir.join("skills").join("executing").join("SKILL.md"), "---\nname: Executing\ndescription: desc\n---\n").unwrap();
+
+        // Save provenance
+        let record = crate::domain::skill::SkillPackageRecord {
+            skill_id: "obra-superpowers".into(),
+            source_kind: crate::domain::skill::SourceKind::Git,
+            source_url: Some("https://github.com/obra/superpowers.git".into()),
+            normalized_source: Some("github.com/obra/superpowers".into()),
+            tracked_ref: Some("main".into()),
+            installed_commit: Some("c1".into()),
+            trusted_commit: Some("c1".into()),
+            last_checked_at: Some("2026-07-09T00:00:00Z".into()),
+        };
+        db.save_skill_package(&record).unwrap();
+
+        let service = SkillService::with_skills_dir(db.clone(), fixture.0.clone());
+
+        // Toggle sub-skill brainstorming
+        service.toggle_project_skill("p1", "obra-superpowers::skills/brainstorming", true).unwrap();
+
+        // Verify skills.json is created
+        let json_path = fixture.0.join(".agents").join("skills.json");
+        assert!(json_path.exists());
+        let content = fs::read_to_string(&json_path).unwrap();
+        assert!(content.contains(".agents/skills/obra-superpowers/skills/brainstorming"));
+
+        // Toggle executing plan as well
+        service.toggle_project_skill("p1", "obra-superpowers::skills/executing", true).unwrap();
+        let content2 = fs::read_to_string(&json_path).unwrap();
+        assert!(content2.contains(".agents/skills/obra-superpowers/skills/brainstorming"));
+        assert!(content2.contains(".agents/skills/obra-superpowers/skills/executing"));
+
+        // Disable brainstorming
+        service.toggle_project_skill("p1", "obra-superpowers::skills/brainstorming", false).unwrap();
+        let content3 = fs::read_to_string(&json_path).unwrap();
+        assert!(!content3.contains(".agents/skills/obra-superpowers/skills/brainstorming"));
+        assert!(content3.contains(".agents/skills/obra-superpowers/skills/executing"));
+
+        // Disable executing
+        service.toggle_project_skill("p1", "obra-superpowers::skills/executing", false).unwrap();
+        // Since no more custom skills are enabled, skills.json should be cleaned up and deleted
+        assert!(!json_path.exists());
+    }
 }
 
 impl SkillService {
@@ -1021,7 +1084,8 @@ impl SkillService {
                 )));
             }
         }
-
+        
+        self.update_project_skills_json(project_path, project_id)?;
         Ok(())
     }
 
@@ -1494,6 +1558,68 @@ impl SkillService {
             if new_id != old_id {
                 self.migrate_single_skill(old_id, &new_id)?;
             }
+        }
+        
+        Ok(())
+    }
+
+    fn update_project_skills_json(&self, project_path: &Path, project_id: &str) -> DomainResult<()> {
+        let enabled_skills = self.repo.get_project_skills(project_id)?;
+        let mut custom_paths = Vec::new();
+        for skill_id in enabled_skills {
+            if skill_id.contains("::") {
+                let parts: Vec<&str> = skill_id.split("::").collect();
+                let pack_id = parts[0];
+                let sub_path = parts[1];
+                custom_paths.push(format!(".agents/skills/{}/{}", pack_id, sub_path));
+            }
+        }
+        
+        let skills_json_path = project_path.join(".agents").join("skills.json");
+        
+        #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
+        struct SkillsJsonEntry {
+            path: String,
+        }
+
+        #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
+        struct SkillsJson {
+            #[serde(default, skip_serializing_if = "Vec::is_empty")]
+            entries: Vec<SkillsJsonEntry>,
+            #[serde(default, skip_serializing_if = "Vec::is_empty")]
+            inherits: Vec<SkillsJsonEntry>,
+            #[serde(default, skip_serializing_if = "Vec::is_empty")]
+            exclude: Vec<String>,
+        }
+        
+        let mut config = if skills_json_path.exists() {
+            let content = fs::read_to_string(&skills_json_path)
+                .map_err(|e| DomainError::Database(format!("Failed to read skills.json: {}", e)))?;
+            serde_json::from_str::<SkillsJson>(&content)
+                .unwrap_or_default()
+        } else {
+            SkillsJson::default()
+        };
+        
+        config.entries = custom_paths
+            .into_iter()
+            .map(|path| SkillsJsonEntry { path })
+            .collect();
+            
+        if config.entries.is_empty() && config.inherits.is_empty() && config.exclude.is_empty() {
+            if skills_json_path.exists() {
+                let _ = fs::remove_file(&skills_json_path);
+            }
+        } else {
+            let agents_dir = project_path.join(".agents");
+            if !agents_dir.exists() {
+                fs::create_dir_all(&agents_dir)
+                    .map_err(|e| DomainError::Database(format!("Failed to create .agents directory: {}", e)))?;
+            }
+            let content = serde_json::to_string_pretty(&config)
+                .map_err(|e| DomainError::Database(format!("Failed to serialize skills.json: {}", e)))?;
+            fs::write(&skills_json_path, content)
+                .map_err(|e| DomainError::Database(format!("Failed to write skills.json: {}", e)))?;
         }
         
         Ok(())
