@@ -478,6 +478,7 @@ mod tests {
         assert!(json_path.exists());
         let content = fs::read_to_string(&json_path).unwrap();
         assert!(content.contains(".agents/skills/obra-superpowers/skills/brainstorming"));
+        assert!(!content.contains("\"path\": \".agents/skills/obra-superpowers\""));
 
         // Toggle executing plan as well
         service
@@ -501,6 +502,37 @@ mod tests {
             .unwrap();
         // Since no more custom skills are enabled, skills.json should be cleaned up and deleted
         assert!(!json_path.exists());
+    }
+
+    #[test]
+    fn writes_standalone_skills_to_project_skills_json() {
+        let fixture = Fixture::new();
+        let db =
+            Arc::new(crate::infrastructure::database::SqliteDatabase::open_in_memory().unwrap());
+        let project = crate::domain::project::Project {
+            id: "p1".into(),
+            name: "Project 1".into(),
+            path: fixture.0.to_str().unwrap().into(),
+            created_at: "2026-07-09T00:00:00Z".into(),
+        };
+        db.create_project(&project).unwrap();
+
+        let skill_dir = fixture.0.join("standalone");
+        fs::create_dir_all(&skill_dir).unwrap();
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: Standalone\ndescription: desc\n---\n",
+        )
+        .unwrap();
+
+        let service = SkillService::with_skills_dir(db, fixture.0.clone());
+        service
+            .toggle_project_skill("p1", "standalone", true)
+            .unwrap();
+
+        let json_path = fixture.0.join(".agents").join("skills.json");
+        let content = fs::read_to_string(&json_path).unwrap();
+        assert!(content.contains(".agents/skills/standalone"));
     }
 }
 
@@ -1723,6 +1755,13 @@ impl SkillService {
                 let pack_id = parts[0];
                 let sub_path = parts[1];
                 custom_paths.push(format!(".agents/skills/{}/{}", pack_id, sub_path));
+            } else {
+                let skill_path = self.skills_dir.join(&skill_id);
+                if scan_skill_root(&skill_id, &skill_path)
+                    .is_ok_and(|discovered| discovered.kind == SkillKind::Standalone)
+                {
+                    custom_paths.push(format!(".agents/skills/{}", skill_id));
+                }
             }
         }
 
