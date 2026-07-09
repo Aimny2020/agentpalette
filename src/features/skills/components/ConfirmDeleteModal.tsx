@@ -21,12 +21,14 @@ export function ConfirmDeleteModal({ skill, onClose, onConfirm }: Props) {
       onClose();
     } catch (err: any) {
       const msg = err.message || '';
-      if (msg.includes('enabled in projects')) {
-        const match = msg.match(/enabled in projects: (.*)/);
+      const details = err.details || '';
+      if (msg.includes('enabled in projects') || details.includes('enabled in projects')) {
+        const target = msg.includes('enabled in projects') ? msg : details;
+        const match = target.match(/enabled in projects: (.*)/);
         const list = match ? match[1].split(', ') : [];
         setOccupiedProjects(list);
       } else {
-        setErrorMessage(msg || '删除失败，请重试');
+        setErrorMessage(details || msg || '删除失败，请重试');
       }
     } finally {
       setIsDeleting(false);

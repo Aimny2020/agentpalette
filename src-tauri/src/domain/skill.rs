@@ -115,6 +115,8 @@ pub struct ImportInspection {
     pub warnings: Vec<String>,
     pub recommended_ref: Option<String>,
     pub duplicate_skill_id: Option<String>,
+    pub install_id: String,
+    pub normalized_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

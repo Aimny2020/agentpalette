@@ -26,8 +26,7 @@ impl SqliteDatabase {
         Self::initialize(connection)
     }
 
-    #[cfg(test)]
-    fn open_in_memory() -> DomainResult<Self> {
+    pub fn open_in_memory() -> DomainResult<Self> {
         let connection = Connection::open_in_memory().map_err(database_error)?;
         Self::initialize(connection)
     }
@@ -353,6 +352,60 @@ impl SkillRepository for SqliteDatabase {
             )
             .optional()
             .map_err(database_error)
+    }
+
+    fn migrate_git_skill_id(&self, old_id: &str, new_id: &str) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        
+        connection.execute("PRAGMA foreign_keys = OFF", [])
+            .map_err(database_error)?;
+            
+        let result = (|| {
+            let tx = connection.transaction()?;
+            
+            tx.execute(
+                "UPDATE skills_user_meta SET skill_id = ?1 WHERE skill_id = ?2",
+                [new_id, old_id],
+            )?;
+            
+            tx.execute(
+                "UPDATE skill_packages SET skill_id = ?1 WHERE skill_id = ?2",
+                [new_id, old_id],
+            )?;
+            
+            tx.execute(
+                "UPDATE project_skills SET skill_id = ?1 WHERE skill_id = ?2",
+                [new_id, old_id],
+            )?;
+            
+            tx.execute(
+                "UPDATE project_skill_states SET skill_id = ?1 WHERE skill_id = ?2",
+                [new_id, old_id],
+            )?;
+            
+            tx.execute(
+                "UPDATE skill_descriptions SET target_id = ?1 WHERE target_id = ?2 AND target_kind = 'package'",
+                [new_id, old_id],
+            )?;
+            
+            let old_member_prefix = format!("{}::%", old_id);
+            tx.execute(
+                "UPDATE skill_descriptions SET target_id = ?1 || SUBSTR(target_id, LENGTH(?2) + 1) WHERE target_id LIKE ?3 AND target_kind = 'member'",
+                [new_id, old_id, &old_member_prefix],
+            )?;
+            
+            tx.commit()?;
+            Ok::<(), rusqlite::Error>(())
+        })();
+        
+        let pragma_result = connection.execute("PRAGMA foreign_keys = ON", []);
+        
+        result.map_err(database_error)?;
+        pragma_result.map_err(database_error)?;
+        Ok(())
     }
 
     fn get_projects_using_skill(&self, skill_id: &str) -> DomainResult<Vec<String>> {
@@ -703,5 +756,64 @@ mod tests {
         // Delete
         database.delete_custom_description("t-1").unwrap();
         assert_eq!(database.get_custom_description("t-1").unwrap(), None);
+    }
+
+    #[test]
+    fn migrates_git_skill_id_and_cascades_safely() {
+        let database = SqliteDatabase::open_in_memory().unwrap();
+        
+        // Add category
+        let conn = database.connection.lock().unwrap();
+        conn.execute("INSERT INTO categories (id, name, created_at) VALUES ('cat1', 'Category 1', '2026-07-09T00:00:00Z')", []).unwrap();
+        
+        // Add project
+        conn.execute("INSERT INTO projects (id, name, path, created_at) VALUES ('p1', 'Project 1', '/p1', '2026-07-09T00:00:00Z')", []).unwrap();
+        
+        // Add user meta (category dependency must exist)
+        conn.execute("INSERT INTO skills_user_meta (skill_id, category_id, updated_at) VALUES ('old-id', 'cat1', '2026-07-09T00:00:00Z')", []).unwrap();
+        
+        // Add skill packages (user meta dependency must exist)
+        conn.execute(
+            "INSERT INTO skill_packages (skill_id, source_kind, source_url, normalized_source, tracked_ref, installed_commit)
+             VALUES ('old-id', 'git', 'https://github.com/o/r.git', 'github.com/o/r', 'main', 'c1')",
+            []
+        ).unwrap();
+        
+        // Add project skills (project and user meta dependencies must exist)
+        conn.execute("INSERT INTO project_skills (project_id, skill_id, enabled_at) VALUES ('p1', 'old-id', '2026-07-09T00:00:00Z')", []).unwrap();
+        
+        // Add project skill states (project skill dependency must exist)
+        conn.execute("INSERT INTO project_skill_states (project_id, skill_id, sync_state) VALUES ('p1', 'old-id', 'current')", []).unwrap();
+        
+        conn.execute("INSERT INTO skill_descriptions (target_id, target_kind, custom_description, updated_at) VALUES ('old-id', 'package', 'Desc 1', '2026-07-09T00:00:00Z')", []).unwrap();
+        conn.execute("INSERT INTO skill_descriptions (target_id, target_kind, custom_description, updated_at) VALUES ('old-id::sub1', 'member', 'Desc 2', '2026-07-09T00:00:00Z')", []).unwrap();
+        
+        drop(conn);
+        
+        // Perform migration
+        database.migrate_git_skill_id("old-id", "new-id").unwrap();
+        
+        // Query results
+        let conn = database.connection.lock().unwrap();
+        
+        let package_count: i64 = conn.query_row("SELECT COUNT(*) FROM skill_packages WHERE skill_id = 'new-id'", [], |r| r.get(0)).unwrap();
+        assert_eq!(package_count, 1);
+        let old_package_count: i64 = conn.query_row("SELECT COUNT(*) FROM skill_packages WHERE skill_id = 'old-id'", [], |r| r.get(0)).unwrap();
+        assert_eq!(old_package_count, 0);
+        
+        let meta_count: i64 = conn.query_row("SELECT COUNT(*) FROM skills_user_meta WHERE skill_id = 'new-id'", [], |r| r.get(0)).unwrap();
+        assert_eq!(meta_count, 1);
+        
+        let proj_skill_count: i64 = conn.query_row("SELECT COUNT(*) FROM project_skills WHERE skill_id = 'new-id'", [], |r| r.get(0)).unwrap();
+        assert_eq!(proj_skill_count, 1);
+        
+        let state_count: i64 = conn.query_row("SELECT COUNT(*) FROM project_skill_states WHERE skill_id = 'new-id'", [], |r| r.get(0)).unwrap();
+        assert_eq!(state_count, 1);
+        
+        let package_desc: String = conn.query_row("SELECT custom_description FROM skill_descriptions WHERE target_id = 'new-id' AND target_kind = 'package'", [], |r| r.get(0)).unwrap();
+        assert_eq!(package_desc, "Desc 1");
+        
+        let member_desc: String = conn.query_row("SELECT custom_description FROM skill_descriptions WHERE target_id = 'new-id::sub1' AND target_kind = 'member'", [], |r| r.get(0)).unwrap();
+        assert_eq!(member_desc, "Desc 2");
     }
 }

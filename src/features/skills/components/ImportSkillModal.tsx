@@ -98,6 +98,8 @@ export function ImportSkillModal({ onClose, onImport }: Props) {
           {inspection && (
             <div className="import-inspection">
               <div className="import-inspection__title"><Package size={16} /><strong>{inspection.name}</strong></div>
+              {inspection.install_id && <p>安装 ID：{inspection.install_id}</p>}
+              {inspection.normalized_source && <p>Git 来源：{inspection.normalized_source}</p>}
               <p>{inspection.kind === 'pack' ? `技能扩展包 · ${inspection.member_count} 个 Skills` : '独立 Skill'}</p>
               {inspection.recommended_ref && <p>推荐稳定版本：{inspection.recommended_ref}</p>}
               {inspection.has_executable_content && <p className="import-warning"><AlertTriangle size={14} />包含脚本或可执行内容，启用前需要信任。</p>}

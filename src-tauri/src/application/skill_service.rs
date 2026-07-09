@@ -153,6 +153,9 @@ mod tests {
         fn delete_descriptions(&self, _target_ids: &[String]) -> DomainResult<()> {
             Ok(())
         }
+        fn migrate_git_skill_id(&self, _old_id: &str, _new_id: &str) -> DomainResult<()> {
+            Ok(())
+        }
     }
 
     struct Fixture(PathBuf);
@@ -317,6 +320,65 @@ mod tests {
             .unwrap();
         assert!(status.success());
     }
+
+    #[test]
+    fn generates_correct_git_skill_ids() {
+        use super::generate_git_skill_id;
+        assert_eq!(generate_git_skill_id("github.com/mattpocock/skills").unwrap(), "mattpocock-skills");
+        assert_eq!(generate_git_skill_id("github.com/axtonliu/axton-obsidian-visual-skills").unwrap(), "axtonliu-axton-obsidian-visual-skills");
+        assert_eq!(generate_git_skill_id("github.com/org/Name-With_special-Chars!!").unwrap(), "org-name-with-special-chars");
+        assert_eq!(generate_git_skill_id("github.com/org/---consecutive---dashes---").unwrap(), "org-consecutive-dashes");
+    }
+
+    #[test]
+    fn stable_hash_generation() {
+        use super::stable_hash;
+        let h1 = stable_hash("github.com/mattpocock/skills");
+        let h2 = stable_hash("github.com/mattpocock/skills");
+        let h3 = stable_hash("github.com/another/skills");
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+        assert_eq!(h1.len(), 6);
+    }
+
+    #[test]
+    fn integrates_git_skill_migration_on_service_startup() {
+        use crate::infrastructure::database::SqliteDatabase;
+        use crate::domain::skill::SkillPackageRecord;
+        
+        let db = Arc::new(SqliteDatabase::open_in_memory().unwrap());
+        
+        // Save old record
+        let record = SkillPackageRecord {
+            skill_id: "skills".into(),
+            source_kind: crate::domain::skill::SourceKind::Git,
+            source_url: Some("https://github.com/mattpocock/skills.git".into()),
+            normalized_source: Some("github.com/mattpocock/skills".into()),
+            tracked_ref: Some("v1.0.1".into()),
+            installed_commit: Some("c123".into()),
+            trusted_commit: None,
+            last_checked_at: Some("2026-07-09T00:00:00Z".into()),
+        };
+        db.save_skill_package(&record).unwrap();
+        
+        let fixture = Fixture::new();
+        // Create old skills folder
+        let old_folder = fixture.0.join("skills");
+        fs::create_dir_all(&old_folder).unwrap();
+        fs::write(old_folder.join("SKILL.md"), "---\nname: mattpocock-skills\ndescription: desc\n---\n").unwrap();
+        
+        // Instantiate service to run migration on startup
+        let _service = SkillService::with_skills_dir(db.clone(), fixture.0.clone());
+        
+        // Verify folder is renamed
+        assert!(!old_folder.exists());
+        assert!(fixture.0.join("mattpocock-skills").exists());
+        
+        // Verify DB record is migrated
+        let new_record = db.get_skill_package("mattpocock-skills").unwrap().unwrap();
+        assert_eq!(new_record.normalized_source.as_deref(), Some("github.com/mattpocock/skills"));
+        assert!(db.get_skill_package("skills").unwrap().is_none());
+    }
 }
 
 impl SkillService {
@@ -326,12 +388,20 @@ impl SkillService {
         if !skills_dir.exists() {
             fs::create_dir_all(&skills_dir).expect("Failed to create skills directory");
         }
-        Self { repo, skills_dir }
+        let service = Self { repo, skills_dir };
+        if let Err(e) = service.migrate_old_git_skills() {
+            eprintln!("Failed to migrate old Git skill IDs on startup: {:?}", e);
+        }
+        service
     }
 
     #[cfg(test)]
     fn with_skills_dir(repo: Arc<dyn SkillRepository>, skills_dir: PathBuf) -> Self {
-        Self { repo, skills_dir }
+        let service = Self { repo, skills_dir };
+        if let Err(e) = service.migrate_old_git_skills() {
+            eprintln!("Failed to migrate old Git skill IDs on startup: {:?}", e);
+        }
+        service
     }
 
     pub fn get_skills(&self) -> DomainResult<Vec<Skill>> {
@@ -480,7 +550,7 @@ impl SkillService {
                 .and_then(|name| name.to_str())
                 .ok_or_else(|| DomainError::Database("Invalid folder name".into()))?;
             let discovered = scan_skill_root(id, path)?;
-            return Ok(inspection_from_discovered(discovered, None, None));
+            return Ok(inspection_from_discovered(discovered, None, None, id.to_string(), None));
         }
 
         let normalized = normalize_git_url(source)?;
@@ -492,17 +562,16 @@ impl SkillService {
                 has_executable_content: false,
                 warnings: Vec::new(),
                 recommended_ref: None,
-                duplicate_skill_id: Some(existing),
+                duplicate_skill_id: Some(existing.clone()),
+                install_id: existing,
+                normalized_source: Some(normalized),
             });
         }
-        let id = normalized
-            .rsplit('/')
-            .next()
-            .ok_or_else(|| DomainError::Database("Invalid Git URL".into()))?;
+        let install_id = self.resolve_git_skill_id(&normalized)?;
         let recommended_ref = latest_stable_tag(source);
         let staging = self
             .skills_dir
-            .join(format!(".{id}-inspect-{}", uuid::Uuid::new_v4()));
+            .join(format!(".{}-inspect-{}", install_id, uuid::Uuid::new_v4()));
         let status = clone_repository(source, recommended_ref.as_deref(), &staging)?;
         if !status.success() {
             let _ = fs::remove_dir_all(&staging);
@@ -510,8 +579,8 @@ impl SkillService {
                 "git clone command exited with error".into(),
             ));
         }
-        let result = scan_skill_root(id, &staging)
-            .map(|discovered| inspection_from_discovered(discovered, recommended_ref, None));
+        let result = scan_skill_root(&install_id, &staging)
+            .map(|discovered| inspection_from_discovered(discovered, recommended_ref, None, install_id, Some(normalized)));
         let _ = fs::remove_dir_all(&staging);
         result
     }
@@ -523,21 +592,16 @@ impl SkillService {
                 "Git source is already installed as {existing}"
             )));
         }
-        let repo_name = normalized
-            .rsplit('/')
-            .next()
-            .filter(|name| !name.is_empty())
-            .ok_or_else(|| DomainError::Database("Invalid Git URL".into()))?
-            .to_string();
-        let dest = self.skills_dir.join(&repo_name);
+        let install_id = self.resolve_git_skill_id(&normalized)?;
+        let dest = self.skills_dir.join(&install_id);
         if dest.exists() {
             return Err(DomainError::Database(format!(
-                "Skill {repo_name} is already installed"
+                "Skill {install_id} is already installed"
             )));
         }
         let staging = self
             .skills_dir
-            .join(format!(".{repo_name}-import-{}", uuid::Uuid::new_v4()));
+            .join(format!(".{}-import-{}", install_id, uuid::Uuid::new_v4()));
         let stable_tag = latest_stable_tag(url);
         let status = clone_repository(url, stable_tag.as_deref(), &staging)?;
 
@@ -547,18 +611,18 @@ impl SkillService {
                 "git clone command exited with error".into(),
             ));
         }
-        if let Err(error) = scan_skill_root(&repo_name, &staging) {
+        if let Err(error) = scan_skill_root(&install_id, &staging) {
             let _ = fs::remove_dir_all(&staging);
             return Err(error);
         }
         fs::rename(&staging, &dest).map_err(|error| DomainError::Database(error.to_string()))?;
         let source = git_source(&dest)
             .ok_or_else(|| DomainError::Database("Git metadata is unavailable".into()))?;
-        let mut record = package_record(&repo_name, &dest, &source);
+        let mut record = package_record(&install_id, &dest, &source);
         record.source_url = Some(url.to_string());
         record.normalized_source = Some(normalized);
         self.repo.save_skill_package(&record)?;
-        Ok(repo_name)
+        Ok(install_id)
     }
 
     pub fn check_skill_updates(&self) -> DomainResult<Vec<SkillUpdate>> {
@@ -715,9 +779,18 @@ impl SkillService {
     pub fn delete_skill(&self, skill_id: &str) -> DomainResult<()> {
         let projects = self.repo.get_projects_using_skill(skill_id)?;
         if !projects.is_empty() {
+            let all_projects = self.repo.get_projects()?;
+            let mut formatted_projects = Vec::new();
+            for pid in projects {
+                if let Some(proj) = all_projects.iter().find(|p| p.id == pid) {
+                    formatted_projects.push(format!("{} ({})", proj.name, proj.path));
+                } else {
+                    formatted_projects.push(pid);
+                }
+            }
             return Err(DomainError::Database(format!(
                 "Skill Pack is enabled in projects: {}",
-                projects.join(", ")
+                formatted_projects.join(", ")
             )));
         }
         let path = self.skills_dir.join(skill_id);
@@ -1048,6 +1121,8 @@ fn inspection_from_discovered(
     discovered: crate::application::skill_scanner::DiscoveredSkill,
     recommended_ref: Option<String>,
     duplicate_skill_id: Option<String>,
+    install_id: String,
+    normalized_source: Option<String>,
 ) -> ImportInspection {
     let member_count = if discovered.kind == SkillKind::Pack {
         discovered.members.len()
@@ -1062,6 +1137,8 @@ fn inspection_from_discovered(
         warnings: discovered.warnings,
         recommended_ref,
         duplicate_skill_id,
+        install_id,
+        normalized_source,
     }
 }
 
@@ -1246,4 +1323,179 @@ fn resolve_remote_target(url: &str, tracked_ref: &str) -> Option<(String, String
     };
     let commit = remote_commit(url, &target_ref)?;
     Some((target_ref, commit))
+}
+
+fn generate_git_skill_id(normalized: &str) -> DomainResult<String> {
+    let parts: Vec<&str> = normalized.split('/').collect();
+    if parts.len() < 2 {
+        return Err(DomainError::Database(format!(
+            "Invalid normalized Git source: {}",
+            normalized
+        )));
+    }
+    let owner = parts[parts.len() - 2];
+    let repo = parts[parts.len() - 1];
+    
+    let clean = |s: &str| {
+        s.chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '-' })
+            .collect::<String>()
+            .to_ascii_lowercase()
+    };
+    
+    let owner_clean = clean(owner);
+    let repo_clean = clean(repo);
+    let combined = format!("{}-{}", owner_clean, repo_clean);
+    
+    let mut compressed = String::new();
+    let mut last_was_dash = false;
+    for c in combined.chars() {
+        if c == '-' {
+            if !last_was_dash {
+                compressed.push(c);
+                last_was_dash = true;
+            }
+        } else {
+            compressed.push(c);
+            last_was_dash = false;
+        }
+    }
+    let trimmed = compressed.trim_matches('-').to_string();
+    if trimmed.is_empty() {
+        return Err(DomainError::Database(format!(
+            "Generated Git skill ID is empty for source: {}",
+            normalized
+        )));
+    }
+    Ok(trimmed)
+}
+
+fn stable_hash(s: &str) -> String {
+    let mut hash: u32 = 5381;
+    for c in s.chars() {
+        hash = ((hash << 5).wrapping_add(hash)).wrapping_add(c as u32);
+    }
+    format!("{:06x}", hash & 0xFFFFFF)
+}
+
+impl SkillService {
+    fn resolve_git_skill_id(&self, normalized: &str) -> DomainResult<String> {
+        let base_id = generate_git_skill_id(normalized)?;
+        
+        let path = self.skills_dir.join(&base_id);
+        if path.exists() || self.repo.get_skill_package(&base_id)?.is_some() {
+            let existing = self.repo.get_skill_package(&base_id)?;
+            let is_same_source = existing.as_ref()
+                .and_then(|r| r.normalized_source.as_deref()) == Some(normalized);
+            
+            if is_same_source {
+                Ok(base_id)
+            } else {
+                let suffix = stable_hash(normalized);
+                Ok(format!("{}-{}", base_id, suffix))
+            }
+        } else {
+            Ok(base_id)
+        }
+    }
+
+    fn generate_new_skill_id_for_migration(&self, old_id: &str, normalized: &str) -> DomainResult<String> {
+        let base_new_id = generate_git_skill_id(normalized)?;
+        let mut final_new_id = base_new_id.clone();
+        
+        let dest_base = self.skills_dir.join(&final_new_id);
+        if (dest_base.exists() || self.repo.get_skill_package(&final_new_id)?.is_some()) && final_new_id != old_id {
+            let existing_rec = self.repo.get_skill_package(&final_new_id)?;
+            let is_same_source = existing_rec.as_ref()
+                .and_then(|r| r.normalized_source.as_deref()) == Some(normalized);
+            
+            if is_same_source {
+                return Err(DomainError::Database(format!(
+                    "Migration conflict: both {} and {} exist for normalized source {}",
+                    old_id, final_new_id, normalized
+                )));
+            } else {
+                let suffix = stable_hash(normalized);
+                final_new_id = format!("{}-{}", base_new_id, suffix);
+            }
+        }
+        
+        if final_new_id != old_id {
+            let final_dest = self.skills_dir.join(&final_new_id);
+            if final_dest.exists() || self.repo.get_skill_package(&final_new_id)?.is_some() {
+                return Err(DomainError::Database(format!(
+                    "Migration conflict: target {} already exists",
+                    final_new_id
+                )));
+            }
+        }
+        
+        Ok(final_new_id)
+    }
+
+    fn migrate_single_skill(&self, old_id: &str, new_id: &str) -> DomainResult<()> {
+        let old_path = self.skills_dir.join(old_id);
+        let new_path = self.skills_dir.join(new_id);
+        
+        let renamed_fs = if old_path.exists() && old_path.is_dir() {
+            fs::rename(&old_path, &new_path)
+                .map_err(|e| DomainError::Database(format!("Failed to rename skill folder: {}", e)))?;
+            true
+        } else {
+            false
+        };
+        
+        let db_result = self.repo.migrate_git_skill_id(old_id, new_id);
+        if db_result.is_err() {
+            if renamed_fs {
+                let _ = fs::rename(&new_path, &old_path);
+            }
+            return db_result;
+        }
+        
+        Ok(())
+    }
+
+    pub fn migrate_old_git_skills(&self) -> DomainResult<()> {
+        if !self.skills_dir.exists() {
+            return Ok(());
+        }
+        
+        let entries = fs::read_dir(&self.skills_dir)
+            .map_err(|e| DomainError::Database(e.to_string()))?;
+            
+        for entry in entries {
+            let entry = entry.map_err(|e| DomainError::Database(e.to_string()))?;
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            
+            let old_id = match path.file_name().and_then(|s| s.to_str()) {
+                Some(name) => name,
+                None => continue,
+            };
+            
+            let record = match self.repo.get_skill_package(old_id)? {
+                Some(r) => r,
+                None => continue,
+            };
+            
+            if record.source_kind != SourceKind::Git {
+                continue;
+            }
+            
+            let normalized = match record.normalized_source.as_deref() {
+                Some(url) => url,
+                None => continue,
+            };
+            
+            let new_id = self.generate_new_skill_id_for_migration(old_id, normalized)?;
+            if new_id != old_id {
+                self.migrate_single_skill(old_id, &new_id)?;
+            }
+        }
+        
+        Ok(())
+    }
 }

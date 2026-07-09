@@ -71,6 +71,8 @@ export interface ImportInspection {
   warnings: string[];
   recommended_ref?: string;
   duplicate_skill_id?: string;
+  install_id: string;
+  normalized_source?: string;
 }
 
 export interface Category {

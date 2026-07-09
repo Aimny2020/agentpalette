@@ -42,6 +42,7 @@ pub trait SkillRepository: Send + Sync {
         record: &crate::domain::skill::SkillPackageRecord,
     ) -> DomainResult<()>;
     fn find_skill_by_source(&self, source_url: &str) -> DomainResult<Option<String>>;
+    fn migrate_git_skill_id(&self, old_id: &str, new_id: &str) -> DomainResult<()>;
 
     fn get_project_skills(&self, project_id: &str) -> DomainResult<Vec<String>>;
     fn save_project_skill(

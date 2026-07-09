@@ -80,4 +80,32 @@ describe('ConfirmDeleteModal', () => {
     expect(handleConfirm).toHaveBeenCalledWith(true);
     expect(handleClose).toHaveBeenCalled();
   });
+
+  it('transitions to State B warning when occupied error is thrown in details (Tauri error structure)', async () => {
+    const handleConfirm = vi.fn()
+      .mockRejectedValueOnce({
+        message: '本地数据库暂时不可用，请重试。',
+        details: 'Skill Pack is enabled in projects: project-x, project-y'
+      })
+      .mockResolvedValueOnce(undefined);
+    const handleClose = vi.fn();
+
+    render(
+      <ConfirmDeleteModal
+        skill={mockSkill}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+      />
+    );
+
+    const confirmBtn = screen.getByText('确认删除');
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(screen.getByText('该技能正在被项目使用')).toBeInTheDocument();
+    expect(screen.getByText('project-x')).toBeInTheDocument();
+    expect(screen.getByText('project-y')).toBeInTheDocument();
+    expect(screen.queryByText('确认删除')).not.toBeInTheDocument();
+  });
 });
