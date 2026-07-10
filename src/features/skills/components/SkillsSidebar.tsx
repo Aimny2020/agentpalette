@@ -26,18 +26,24 @@ export function SkillsSidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newCatName.trim()) {
-      onCreateCategory(newCatName.trim());
-      setNewCatName('');
-    }
-  };
+  const [isCreatingCat, setIsCreatingCat] = useState(false);
 
   return (
     <aside className="skills-sidebar">
-      <h3>技能分类</h3>
+      <div className="sidebar-heading-row">
+        <h3>技能分类</h3>
+        <button
+          type="button"
+          className="create-cat-btn"
+          onClick={() => {
+            setIsCreatingCat(true);
+            setNewCatName('');
+          }}
+          title="新建分类"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
       <ul className="sidebar-cat-list">
         <li
           data-active={selectedCategoryId === null}
@@ -135,17 +141,40 @@ export function SkillsSidebar({
             </li>
           );
         })}
+
+        {isCreatingCat && (
+          <li className="sidebar-cat-item--creating">
+            <FolderOpen size={16} />
+            <input
+              type="text"
+              className="cat-create-input"
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              placeholder="新分类名称..."
+              autoFocus
+              onBlur={() => {
+                setTimeout(() => {
+                  setIsCreatingCat(false);
+                  setNewCatName('');
+                }, 150);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = newCatName.trim();
+                  if (val) {
+                    onCreateCategory(val);
+                  }
+                  setIsCreatingCat(false);
+                  setNewCatName('');
+                } else if (e.key === 'Escape') {
+                  setIsCreatingCat(false);
+                  setNewCatName('');
+                }
+              }}
+            />
+          </li>
+        )}
       </ul>
-      <form onSubmit={handleCreate} className="create-category-form">
-        <input
-          placeholder="新建分类..."
-          value={newCatName}
-          onChange={(e) => setNewCatName(e.target.value)}
-        />
-        <button type="submit">
-          <Plus size={16} />
-        </button>
-      </form>
     </aside>
   );
 }

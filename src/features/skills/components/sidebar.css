@@ -170,3 +170,52 @@
   padding-left: calc(0.85rem - 3px);
 }
 
+/* Sidebar heading row and inline add actions */
+.sidebar-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: var(--space-2);
+}
+
+.create-cat-btn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.create-cat-btn:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-soft);
+}
+
+/* Sidebar inline creation item and input styling */
+.sidebar-cat-item--creating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+}
+
+.cat-create-input {
+  flex: 1;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  outline: 0;
+  width: 100%;
+}
+
+
