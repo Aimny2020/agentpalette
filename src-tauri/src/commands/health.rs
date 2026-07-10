@@ -11,6 +11,7 @@ pub struct AppState {
     pub health: HealthService,
     pub skills: SkillService,
     pub repo: Arc<dyn SkillRepository>,
+    pub harnesses: crate::application::harness_service::HarnessService,
 }
 
 #[tauri::command]

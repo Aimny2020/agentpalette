@@ -10,6 +10,7 @@ import { ProjectOverview } from '../features/projects/pages/ProjectOverview';
 import { ProjectsPage } from '../features/projects/ProjectsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { SkillsPage } from '../features/skills/SkillsPage';
+import { GlobalHarnessPage } from '../features/harness/GlobalHarnessPage';
 import { TasksPage } from '../features/tasks/TasksPage';
 import { AppShell } from './layout/AppShell';
 
@@ -31,6 +32,7 @@ export const appRoutes: RouteObject[] = [
         ],
       },
       { path: 'skills', element: <SkillsPage /> },
+      { path: 'harness', element: <GlobalHarnessPage /> },
       { path: 'mcp', element: <McpPage /> },
       { path: 'tasks', element: <TasksPage /> },
       { path: 'settings', element: <SettingsPage /> },

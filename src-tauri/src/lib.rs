@@ -9,6 +9,7 @@ use application::health_service::HealthService;
 use commands::health::{health_check, AppState};
 use commands::projects::*;
 use commands::skills::*;
+use commands::harnesses::*;
 use infrastructure::database::SqliteDatabase;
 use infrastructure::system::PlatformSystem;
 use tauri::Manager;
@@ -30,10 +31,15 @@ pub fn run() {
                 Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>
             );
             let repo = Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>;
+            let harnesses = application::harness_service::HarnessService::new(
+                Arc::clone(&database) as Arc<dyn crate::domain::ports::HarnessRepository>,
+                Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>,
+            );
             app.manage(AppState {
                 health: HealthService::new(database, system),
                 skills,
                 repo,
+                harnesses,
             });
             Ok(())
         })
@@ -63,7 +69,20 @@ pub fn run() {
             preview_custom_descriptions_import,
             confirm_custom_descriptions_import,
             get_unassociated_descriptions_count,
-            clear_unassociated_descriptions
+            clear_unassociated_descriptions,
+            get_harness_templates,
+            inspect_harness_import,
+            import_harness_from_folder,
+            extract_harness_from_project,
+            create_harness_template,
+            get_harness_template,
+            read_harness_file,
+            write_harness_file,
+            create_harness_file,
+            delete_harness_file,
+            delete_harness_template,
+            validate_harness_template,
+            duplicate_harness_template
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgentForge");

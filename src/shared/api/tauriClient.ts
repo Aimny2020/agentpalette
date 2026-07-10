@@ -1,6 +1,24 @@
 import { invoke } from '@tauri-apps/api/core';
 
-import type { CommandFailure, HealthReport, ImportInspection, Skill, SkillUpdate, Category, Project, SkillDescriptionRecord, DescriptionsImportPreview } from './types';
+import type {
+  CommandFailure,
+  HealthReport,
+  ImportInspection,
+  Skill,
+  SkillUpdate,
+  Category,
+  Project,
+  SkillDescriptionRecord,
+  DescriptionsImportPreview,
+  HarnessTemplateSummary,
+  HarnessImportInspection,
+  HarnessImportOptions,
+  HarnessExtractOptions,
+  CreateHarnessTemplateInput,
+  HarnessTemplateDetail,
+  HarnessFile,
+  HarnessValidationReport,
+} from './types';
 
 export class AppError extends Error {
   constructor(
@@ -257,6 +275,132 @@ export async function getUnassociatedDescriptionsCount(): Promise<number> {
 export async function clearUnassociatedDescriptions(): Promise<number> {
   try {
     return await invoke<number>('clear_unassociated_descriptions');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getHarnessTemplates(): Promise<HarnessTemplateSummary[]> {
+  try {
+    return await invoke<HarnessTemplateSummary[]>('get_harness_templates');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function inspectHarnessImport(sourcePath: string): Promise<HarnessImportInspection> {
+  try {
+    return await invoke<HarnessImportInspection>('inspect_harness_import', { sourcePath });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function importHarnessFromFolder(
+  sourcePath: string,
+  options: HarnessImportOptions,
+): Promise<HarnessTemplateDetail> {
+  try {
+    return await invoke<HarnessTemplateDetail>('import_harness_from_folder', { sourcePath, options });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function extractHarnessFromProject(
+  projectId: string,
+  options: HarnessExtractOptions,
+): Promise<HarnessTemplateDetail> {
+  try {
+    return await invoke<HarnessTemplateDetail>('extract_harness_from_project', { projectId, options });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function createHarnessTemplate(
+  input: CreateHarnessTemplateInput,
+): Promise<HarnessTemplateDetail> {
+  try {
+    return await invoke<HarnessTemplateDetail>('create_harness_template', { input });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getHarnessTemplate(templateId: string): Promise<HarnessTemplateDetail> {
+  try {
+    return await invoke<HarnessTemplateDetail>('get_harness_template', { templateId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function readHarnessFile(templateId: string, path: string): Promise<HarnessFile> {
+  try {
+    return await invoke<HarnessFile>('read_harness_file', { templateId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function writeHarnessFile(
+  templateId: string,
+  path: string,
+  content: string,
+): Promise<HarnessFile> {
+  try {
+    return await invoke<HarnessFile>('write_harness_file', { templateId, path, content });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function createHarnessFile(
+  templateId: string,
+  path: string,
+  kind: string,
+): Promise<HarnessFile> {
+  try {
+    return await invoke<HarnessFile>('create_harness_file', { templateId, path, kind });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function deleteHarnessFile(templateId: string, path: string): Promise<void> {
+  try {
+    await invoke<void>('delete_harness_file', { templateId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function deleteHarnessTemplate(templateId: string): Promise<void> {
+  try {
+    await invoke<void>('delete_harness_template', { templateId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function validateHarnessTemplate(
+  templateId: string,
+): Promise<HarnessValidationReport> {
+  try {
+    return await invoke<HarnessValidationReport>('validate_harness_template', { templateId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function duplicateHarnessTemplate(
+  templateId: string,
+  targetId: string,
+  targetName: string,
+): Promise<HarnessTemplateDetail> {
+  try {
+    return await invoke<HarnessTemplateDetail>('duplicate_harness_template', { templateId, targetId, targetName });
   } catch (error) {
     throw normalizeError(error);
   }

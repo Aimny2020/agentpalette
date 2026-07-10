@@ -6,7 +6,7 @@ use rusqlite::OptionalExtension;
 
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::health::{DatabasePort, DatabaseStatus};
-use crate::domain::ports::SkillRepository;
+use crate::domain::ports::{SkillRepository, HarnessRepository};
 use crate::domain::project::Project;
 use crate::domain::skill::{Category, SkillPackageRecord, SourceKind, UserSkillMeta};
 
@@ -15,6 +15,7 @@ const SKILLS_MIGRATION: &str = include_str!("../../migrations/002_skills.sql");
 const SKILL_PACKAGES_MIGRATION: &str = include_str!("../../migrations/003_skill_packages.sql");
 const SKILL_DESCRIPTIONS_MIGRATION: &str =
     include_str!("../../migrations/004_skill_descriptions.sql");
+const HARNESSES_MIGRATION: &str = include_str!("../../migrations/005_harness_templates.sql");
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,
@@ -46,6 +47,9 @@ impl SqliteDatabase {
             .map_err(database_error)?;
         connection
             .execute_batch(SKILL_DESCRIPTIONS_MIGRATION)
+            .map_err(database_error)?;
+        connection
+            .execute_batch(HARNESSES_MIGRATION)
             .map_err(database_error)?;
         Ok(Self {
             connection: Mutex::new(connection),
@@ -673,6 +677,85 @@ impl SkillRepository for SqliteDatabase {
     }
 }
 
+impl HarnessRepository for SqliteDatabase {
+    fn get_harnesses(&self) -> DomainResult<Vec<crate::domain::harness::HarnessTemplateSummary>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let mut stmt = connection
+            .prepare("SELECT id, name, description, work_type, source_type, source_path, created_at, updated_at FROM harness_templates ORDER BY created_at ASC")
+            .map_err(database_error)?;
+
+        let iter = stmt
+            .query_map([], |r| {
+                Ok(crate::domain::harness::HarnessTemplateSummary {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    description: r.get(2)?,
+                    work_type: r.get(3)?,
+                    source_type: r.get(4)?,
+                    source_path: r.get(5)?,
+                    created_at: r.get(6)?,
+                    updated_at: r.get(7)?,
+                    file_count: 0,
+                    has_agents_md: false,
+                    has_manifest: false,
+                    is_valid: false,
+                })
+            })
+            .map_err(database_error)?;
+
+        let mut list = Vec::new();
+        for item in iter {
+            list.push(item.map_err(database_error)?);
+        }
+        Ok(list)
+    }
+
+    fn save_harness(&self, summary: &crate::domain::harness::HarnessTemplateSummary) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "INSERT INTO harness_templates (id, name, description, work_type, source_type, source_path, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   description = excluded.description,
+                   work_type = excluded.work_type,
+                   source_type = excluded.source_type,
+                   source_path = excluded.source_path,
+                   updated_at = excluded.updated_at",
+                rusqlite::params![
+                    summary.id,
+                    summary.name,
+                    summary.description,
+                    summary.work_type,
+                    summary.source_type,
+                    summary.source_path,
+                    summary.created_at,
+                    summary.updated_at
+                ],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+
+    fn delete_harness(&self, id: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute("DELETE FROM harness_templates WHERE id = ?1", [id])
+            .map_err(database_error)?;
+        Ok(())
+    }
+}
+
 fn database_error(error: rusqlite::Error) -> DomainError {
     DomainError::Database(error.to_string())
 }
@@ -680,7 +763,7 @@ fn database_error(error: rusqlite::Error) -> DomainError {
 #[cfg(test)]
 mod tests {
     use crate::domain::health::{DatabasePort, DatabaseStatus};
-    use crate::domain::ports::SkillRepository;
+    use crate::domain::ports::{SkillRepository, HarnessRepository};
     use crate::domain::skill::{SkillPackageRecord, SourceKind};
 
     use super::SqliteDatabase;
@@ -699,6 +782,40 @@ mod tests {
         assert!(database.has_table("skill_packages").unwrap());
         assert!(database.has_table("project_skill_states").unwrap());
         assert!(database.has_table("skill_descriptions").unwrap());
+        assert!(database.has_table("harness_templates").unwrap());
+    }
+
+    #[test]
+    fn saves_and_loads_harness_templates() {
+        let database = SqliteDatabase::open_in_memory().unwrap();
+        let template = crate::domain::harness::HarnessTemplateSummary {
+            id: "test-harness".into(),
+            name: "Test Harness".into(),
+            description: "Test Description".into(),
+            work_type: "code".into(),
+            source_type: "local".into(),
+            source_path: None,
+            created_at: "2026-07-09T00:00:00Z".into(),
+            updated_at: "2026-07-09T00:00:00Z".into(),
+            file_count: 0,
+            has_agents_md: false,
+            has_manifest: false,
+            is_valid: false,
+        };
+
+        database.save_harness(&template).unwrap();
+        let list = database.get_harnesses().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "test-harness");
+        assert_eq!(list[0].name, "Test Harness");
+        assert_eq!(list[0].description, "Test Description");
+        assert_eq!(list[0].work_type, "code");
+        assert_eq!(list[0].source_type, "local");
+
+        // Delete
+        database.delete_harness("test-harness").unwrap();
+        let list2 = database.get_harnesses().unwrap();
+        assert_eq!(list2.len(), 0);
     }
 
     #[test]

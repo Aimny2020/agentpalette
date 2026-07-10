@@ -89,6 +89,12 @@ pub trait SkillRepository: Send + Sync {
     fn delete_descriptions(&self, target_ids: &[String]) -> DomainResult<()>;
 }
 
+pub trait HarnessRepository: Send + Sync {
+    fn get_harnesses(&self) -> DomainResult<Vec<crate::domain::harness::HarnessTemplateSummary>>;
+    fn save_harness(&self, summary: &crate::domain::harness::HarnessTemplateSummary) -> DomainResult<()>;
+    fn delete_harness(&self, id: &str) -> DomainResult<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;

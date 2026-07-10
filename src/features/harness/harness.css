@@ -1,0 +1,726 @@
+/* Harness template page style design */
+
+.harness-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.harness-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-card);
+}
+
+.harness-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.harness-search-input {
+  flex: 1;
+  max-width: 24rem;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  padding: 0.6rem 1.5rem;
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.harness-search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.harness-filter-select {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  padding: 0.6rem 2rem 0.6rem 1.2rem;
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  min-width: 15rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.harness-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Empty State Styling */
+.harness-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-outline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3);
+  min-height: 24rem;
+  box-shadow: var(--shadow-card);
+}
+
+.harness-empty-state h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-empty-state p {
+  color: var(--color-muted);
+  max-width: 28rem;
+  margin: 0 0 var(--space-3);
+  line-height: 1.6;
+}
+
+.harness-empty-ctas {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Cards Grid */
+.harness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--space-2);
+}
+
+.harness-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.harness-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-outline));
+  box-shadow: 0 12px 28px rgb(11 28 48 / 0.08);
+}
+
+.harness-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.harness-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-card__desc {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 var(--space-2) 0;
+  flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.harness-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-surface-soft);
+  padding-top: var(--space-1);
+  margin-top: auto;
+}
+
+.harness-card__footer-left {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.harness-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+}
+
+.harness-badge--code { background: #e3f2fd; color: #1e88e5; }
+.harness-badge--doc { background: #e8f5e9; color: #43a047; }
+.harness-badge--presentation { background: #fff3e0; color: #fb8c00; }
+.harness-badge--review { background: #f3e5f5; color: #8e24aa; }
+.harness-badge--custom { background: var(--color-surface-soft); color: var(--color-muted); }
+
+/* Detail Editor Layout */
+.harness-editor-layout {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr) 22rem;
+  gap: var(--space-2);
+  height: calc(100vh - 10rem);
+  min-height: 32rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* File Tree Side Panel */
+.harness-editor__tree {
+  border-right: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.harness-tree__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.harness-tree__header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-tree__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.harness-tree__btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.harness-tree__btn:hover {
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+
+.harness-tree__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.harness-tree__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.harness-tree__item:hover {
+  background: var(--color-surface-soft);
+}
+
+.harness-tree__item[data-active="true"] {
+  background: var(--color-surface-strong);
+  font-weight: 700;
+}
+
+.harness-tree__item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.harness-tree__item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.harness-tree__item-delete {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-danger);
+  padding: 0.15rem;
+  border-radius: 4px;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.harness-tree__item:hover .harness-tree__item-delete {
+  opacity: 1;
+}
+
+.harness-tree__item-delete:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* Center Editor Panel */
+.harness-editor__content {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-canvas);
+  overflow: hidden;
+}
+
+.harness-editor__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-outline);
+  background: var(--color-surface);
+}
+
+.harness-editor__title-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.harness-editor__filename {
+  font-size: 0.95rem;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-editor__actions {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.harness-editor__textarea-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.harness-editor__textarea {
+  flex: 1;
+  background: var(--color-canvas);
+  border: none;
+  outline: none;
+  font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  padding: var(--space-3);
+  color: var(--color-ink);
+  resize: none;
+}
+
+.harness-editor__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  gap: var(--space-1);
+  height: 100%;
+  font-size: 0.9rem;
+}
+
+/* Right Detail/Health Panel */
+.harness-editor__meta {
+  border-left: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.harness-meta__section {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.harness-meta__section:last-child {
+  border-bottom: none;
+}
+
+.harness-meta__section h4 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.harness-meta__title {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-meta__desc {
+  font-size: 0.88rem;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-2) 0;
+  line-height: 1.5;
+}
+
+.harness-meta__kv {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.harness-meta__kv-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.harness-meta__kv-label {
+  color: var(--color-muted);
+}
+
+.harness-meta__kv-value {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.harness-meta__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+/* Health and Advisory Checks styling */
+.harness-health-score-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.harness-health-score-ring {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.harness-health-score-ring[data-valid="true"] {
+  background: color-mix(in srgb, var(--color-primary) 15%, white);
+  color: var(--color-primary-ink);
+}
+
+.harness-health-score-ring[data-valid="false"] {
+  background: color-mix(in srgb, var(--color-danger) 10%, white);
+  color: var(--color-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
+.harness-health-score-text h5 {
+  margin: 0 0 0.15rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.harness-health-score-text p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.harness-validation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.harness-validation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.harness-validation-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.harness-validation-item[data-type="success"] { color: var(--color-primary-ink); }
+.harness-validation-item[data-type="warning"] { color: #e65100; }
+.harness-validation-item[data-type="error"] { color: var(--color-danger); }
+
+
+/* Modals & Wizards styling */
+.harness-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Wizard Steps */
+.harness-wizard-steps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  margin-bottom: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
+.harness-wizard-steps::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-outline);
+  z-index: 1;
+}
+
+.harness-wizard-step {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-outline);
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  z-index: 2;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.harness-wizard-step[data-active="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-ink);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.harness-wizard-step[data-completed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-surface-soft);
+  color: var(--color-primary-ink);
+}
+
+/* Type Grid */
+.harness-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.harness-type-card {
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.2s, background-color 0.2s;
+  text-align: left;
+}
+
+.harness-type-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-soft);
+}
+
+.harness-type-card[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.harness-type-card strong {
+  font-size: 1.05rem;
+  color: var(--color-ink);
+}
+
+.harness-type-card span {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+/* Checklist */
+.harness-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.harness-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s;
+}
+
+.harness-checklist-item:hover {
+  background: var(--color-surface-soft);
+}
+
+.harness-checklist-item input {
+  cursor: pointer;
+}
+
+/* File Tree Preview */
+.harness-tree-preview {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+  line-height: 1.5;
+  text-align: left;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+/* Form Groups */
+.harness-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.harness-form-group label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.harness-form-group input,
+.harness-form-group textarea {
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.harness-form-group input:focus,
+.harness-form-group textarea:focus {
+  border-color: var(--color-primary);
+}
+
+/* Import modal styling */
+.harness-import-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-outline);
+  margin-bottom: var(--space-2);
+}
+
+.harness-import-tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.65rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+}
+
+.harness-import-tab[data-active="true"] {
+  color: var(--color-ink);
+  border-color: var(--color-primary);
+}
+
+.harness-import-inspection-panel {
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-canvas));
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  text-align: left;
+}
+
+.harness-import-inspection-panel h5 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}

@@ -112,3 +112,101 @@ export interface DescriptionsImportPreview {
   invalid_records: InvalidRecordInfo[];
   valid_records: SkillDescriptionRecord[];
 }
+
+export interface HarnessTemplateFile {
+  path: string;
+  kind: string;
+  standard: boolean;
+}
+
+export interface HarnessManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  workType: string;
+  source: string;
+  requiredFiles: string[];
+  files: HarnessTemplateFile[];
+}
+
+export interface HarnessTemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  workType: string;
+  sourceType: string;
+  sourcePath?: string;
+  createdAt: string;
+  updatedAt: string;
+  fileCount: number;
+  hasAgentsMd: boolean;
+  hasManifest: boolean;
+  isValid: boolean;
+}
+
+export interface HarnessValidationReport {
+  hasAgentsMd: boolean;
+  hasManifest: boolean;
+  manifestParses: boolean;
+  missingRequiredFiles: string[];
+  syntaxErrors: string[];
+  warnings: string[];
+  isValid: boolean;
+}
+
+export interface HarnessFileSummary {
+  path: string;
+  size: number;
+  isStandard: boolean;
+}
+
+export interface HarnessTemplateDetail {
+  id: string;
+  name: string;
+  description: string;
+  workType: string;
+  sourceType: string;
+  sourcePath?: string;
+  createdAt: string;
+  updatedAt: string;
+  files: HarnessFileSummary[];
+  validation: HarnessValidationReport;
+}
+
+export interface HarnessFile {
+  path: string;
+  content: string;
+}
+
+export interface CreateHarnessTemplateInput {
+  id: string;
+  name: string;
+  description: string;
+  workType: string;
+  optionalFiles: string[];
+}
+
+export interface HarnessImportInspection {
+  hasAgentsMd: boolean;
+  hasManifest: boolean;
+  name?: string;
+  description?: string;
+  workType?: string;
+  foundFiles: string[];
+}
+
+export interface HarnessImportOptions {
+  id: string;
+  name: string;
+  description: string;
+  workType: string;
+}
+
+export interface HarnessExtractOptions {
+  id: string;
+  name: string;
+  description: string;
+  workType: string;
+  selectedFiles: string[];
+}
