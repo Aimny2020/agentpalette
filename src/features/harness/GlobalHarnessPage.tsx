@@ -270,7 +270,7 @@ export function GlobalHarnessPage() {
     <div className="harness-container">
       {selectedTemplateId && detail ? (
         /* Detail Page / Split Editor View */
-        <div className="page-stack">
+        <div className="page-stack harness-editor-container">
           <header className="page-header" style={{ minHeight: 'auto', alignItems: 'center', marginBottom: 'var(--space-1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <button

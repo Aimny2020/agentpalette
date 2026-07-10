@@ -7,6 +7,11 @@
   width: 100%;
 }
 
+.harness-container:has(.harness-editor-container) {
+  height: 100%;
+  overflow: hidden;
+}
+
 .harness-toolbar {
   display: flex;
   justify-content: space-between;
@@ -186,13 +191,43 @@
 .harness-badge--review { background: #f3e5f5; color: #8e24aa; }
 .harness-badge--custom { background: var(--color-surface-soft); color: var(--color-muted); }
 
+/* Lock parent container heights when editor is active to prevent any micro scrollbars */
+body:has(.harness-editor-container) {
+  overflow: hidden !important;
+}
+
+.app-shell:has(.harness-editor-container) {
+  height: 100vh;
+  overflow: hidden !important;
+}
+
+.shell-body:has(.harness-editor-container) {
+  height: calc(100vh - 4rem);
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.workspace-main:has(.harness-editor-container) {
+  height: 100%;
+  overflow: hidden !important;
+}
+
+.harness-editor-container {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--space-2) !important;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 /* Detail Editor Layout */
 .harness-editor-layout {
   display: grid;
   grid-template-columns: 18rem minmax(0, 1fr) 22rem;
   gap: var(--space-2);
-  height: calc(100vh - 14.5rem);
-  min-height: 26rem;
+  flex: 1;
+  min-height: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-outline);
   border-radius: var(--radius-md);
