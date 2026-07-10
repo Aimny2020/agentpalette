@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -19,9 +19,11 @@ vi.mock('../shared/api/tauriClient', async (importOriginal) => {
 
 import { appRoutes } from '../app/router';
 
-afterEach(cleanup);
-
 describe('foundation routes', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it.each([
     ['/', '控制面板'],
     ['/projects', '项目管理'],
@@ -50,8 +52,9 @@ describe('foundation routes', () => {
       </QueryClientProvider>,
     );
 
+    const projectNav = await screen.findByRole('navigation', { name: '项目详情' });
     for (const tab of ['概览', 'Harness', 'Agents', '环境']) {
-      expect(await screen.findByRole('link', { name: tab })).toBeInTheDocument();
+      expect(within(projectNav).getByRole('link', { name: tab })).toBeInTheDocument();
     }
   });
 });

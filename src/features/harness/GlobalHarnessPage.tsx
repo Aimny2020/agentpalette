@@ -17,6 +17,7 @@ import {
 } from '../../shared/api/tauriClient';
 import { CreateHarnessModal } from './components/CreateHarnessModal';
 import { ImportHarnessModal } from './components/ImportHarnessModal';
+import { ConfirmDeleteHarnessModal } from './components/ConfirmDeleteHarnessModal';
 import { HarnessTemplateSummary, HarnessFileSummary, HarnessTemplateDetail } from '../../shared/api/types';
 import './harness.css';
 
@@ -28,6 +29,7 @@ export function GlobalHarnessPage() {
   // Modal toggle states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Active template detail states
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -214,9 +216,7 @@ export function GlobalHarnessPage() {
 
   const handleDeleteTemplate = () => {
     if (!selectedTemplateId) return;
-    if (confirm(`确定要物理删除该 Harness 模板 "${detail?.name}" 吗？\n此操作会完全移除磁盘上的模板目录及所有规约文件！`)) {
-      deleteTemplateMut.mutate(selectedTemplateId);
-    }
+    setIsDeleteModalOpen(true);
   };
 
   const handleDuplicateTemplate = () => {
@@ -698,6 +698,18 @@ export function GlobalHarnessPage() {
           onClose={() => setIsImportOpen(false)}
           onImportFolder={(path, options) => importFolderMut.mutate({ path, options })}
           onExtractProject={(projectId, options) => extractProjectMut.mutate({ projectId, options })}
+        />
+      )}
+
+      {isDeleteModalOpen && detail && (
+        <ConfirmDeleteHarnessModal
+          templateName={detail.name}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={async () => {
+            await deleteTemplateMut.mutateAsync(selectedTemplateId!);
+            setIsDeleteModalOpen(false);
+          }}
+          isDeleting={deleteTemplateMut.isPending}
         />
       )}
     </div>
