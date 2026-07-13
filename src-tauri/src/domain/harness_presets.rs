@@ -21,11 +21,6 @@ fn json(path: &str, label: &str, content: &str) -> HarnessPresetFile {
 fn shared_code_files() -> Vec<HarnessPresetFile> {
     vec![
         markdown(
-            "docs/architecture.md",
-            "Architecture boundaries",
-            "# Architecture Boundaries\n\n## System Overview\nDescribe the system and its major boundaries.\n\n## Layer Rules\n- Keep dependencies flowing in the documented direction.\n- Put decisions at the owning boundary.\n\n## Invariants\n- Record rules that must remain true.\n",
-        ),
-        markdown(
             "docs/task-status.md",
             "Verified task status",
             "# Task Status\n\n## Current Verified State\n- Repository state:\n- Verification state:\n- Active work item:\n- Current blocker:\n\n## Session Log\n\n### Session 001\n- Goal:\n- Completed:\n- Verification evidence:\n- Risks:\n- Next step:\n\n## Decisions\n- Decision:\n  - Context:\n  - Consequence:\n",
@@ -67,6 +62,11 @@ pub fn built_in_code_work_modules() -> Vec<CodeWorkModule> {
             name: "Technical Design".into(),
             description: "Architecture-first design work with explicit alternatives, constraints, and verification.".into(),
             files: vec![
+                markdown(
+                    "docs/architecture.md",
+                    "Architecture boundaries",
+                    "# Architecture Boundaries\n\n## System Overview\nDescribe the system and its major boundaries.\n\n## Layer Rules\n- Keep dependencies flowing in the documented direction.\n- Put decisions at the owning boundary.\n\n## Invariants\n- Record rules that must remain true.\n",
+                ),
                 markdown(
                     "docs/decision-record.md",
                     "Technical decision record",
@@ -209,6 +209,11 @@ mod tests {
             .files
             .iter()
             .any(|file| file.path == "docs/decision-record.md"));
+        assert!(find_code_work_module("technical-design")
+            .unwrap()
+            .files
+            .iter()
+            .any(|file| file.path == "docs/architecture.md"));
         assert!(find_code_work_module("feature-development")
             .unwrap()
             .files
@@ -219,6 +224,13 @@ mod tests {
             .files
             .iter()
             .any(|file| file.path == "docs/review-findings.md"));
+    }
+
+    #[test]
+    fn shared_code_files_do_not_include_technical_design_artifacts() {
+        assert!(!super::code_work_shared_files()
+            .iter()
+            .any(|file| file.path == "docs/architecture.md"));
     }
 
     #[test]

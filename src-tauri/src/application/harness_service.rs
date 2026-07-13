@@ -206,6 +206,10 @@ impl HarnessService {
         input: CreateHarnessTemplateInput,
     ) -> DomainResult<HarnessTemplateDetail> {
         let (selected_files, selected_modules) = self.resolve_creation_files(&input)?;
+        let selected_module_ids = selected_modules
+            .iter()
+            .map(|module| module.id.clone())
+            .collect::<Vec<_>>();
         let id = uuid::Uuid::new_v4().to_string();
         let template_dir = self.harnesses_dir.join(&id);
 
@@ -233,7 +237,7 @@ impl HarnessService {
                 input.preset_id.clone()
             },
             selected_modules: if input.work_type == "code" {
-                input.selected_modules.clone()
+                selected_module_ids.clone()
             } else {
                 Vec::new()
             },
@@ -277,7 +281,7 @@ impl HarnessService {
                 input.preset_id.clone()
             },
             selected_modules: if input.work_type == "code" {
-                input.selected_modules.clone()
+                selected_module_ids
             } else {
                 Vec::new()
             },
@@ -345,10 +349,7 @@ impl HarnessService {
             }
             "custom" => {
                 self.resolve_custom_files(input.preset_id.as_deref(), &input.selected_modules)?;
-                let available_files = built_in_harness_presets()
-                    .into_iter()
-                    .flat_map(|item| item.files)
-                    .collect::<Vec<_>>();
+                let available_files = self.custom_standard_files();
                 let selected_files =
                     self.select_preset_files(&input.optional_files, &available_files)?;
                 Ok((selected_files, Vec::new()))
@@ -376,7 +377,6 @@ impl HarnessService {
         }
 
         let mut seen = std::collections::HashSet::new();
-        let mut modules = Vec::new();
         for id in selected_modules {
             if !seen.insert(id.clone()) {
                 return Err(DomainError::Database(format!(
@@ -384,12 +384,14 @@ impl HarnessService {
                     id
                 )));
             }
-            let module = crate::domain::harness_presets::find_code_work_module(id)
+            crate::domain::harness_presets::find_code_work_module(id)
                 .ok_or_else(|| DomainError::Database(format!("Unknown module ID '{}'", id)))?;
-            modules.push(module);
         }
 
-        Ok(modules)
+        Ok(crate::domain::harness_presets::built_in_code_work_modules()
+            .into_iter()
+            .filter(|module| seen.contains(&module.id))
+            .collect())
     }
 
     fn resolve_single_preset(
@@ -463,6 +465,26 @@ impl HarnessService {
         Ok(selected)
     }
 
+    fn custom_standard_files(&self) -> Vec<crate::domain::harness::HarnessPresetFile> {
+        let mut files = std::collections::BTreeMap::new();
+
+        for preset in built_in_harness_presets() {
+            for file in preset.files {
+                files.insert(file.path.clone(), file);
+            }
+        }
+        for file in crate::domain::harness_presets::code_work_shared_files() {
+            files.insert(file.path.clone(), file);
+        }
+        for module in crate::domain::harness_presets::built_in_code_work_modules() {
+            for file in module.files {
+                files.insert(file.path.clone(), file);
+            }
+        }
+
+        files.into_values().collect()
+    }
+
     fn generate_agents_content(
         &self,
         work_type: &str,
@@ -501,9 +523,15 @@ impl HarnessService {
         content.push_str(
             "- Verification Evidence: Do not claim completion without verification evidence.\n",
         );
-        content.push_str(
-            "- Session Handoff: Always leave the next step explicit and update status.\n\n",
-        );
+        if selected_files
+            .iter()
+            .any(|file| file.path == "docs/session-handoff.md")
+        {
+            content.push_str(
+                "- Session Handoff: Update the selected handoff file before ending a session.\n",
+            );
+        }
+        content.push('\n');
 
         content.push_str("## Task Classification\n\n");
         content.push_str("Use these signals to determine which selected module rules apply:\n");
@@ -528,29 +556,56 @@ impl HarnessService {
                 "technical-design" => {
                     content.push_str("## Technical Design Role\n\n");
                     content.push_str(&module.agent_instructions);
-                    content.push_str("\n\n");
                 }
                 "feature-development" => {
                     content.push_str("## Feature Development Role\n\n");
                     content.push_str(&module.agent_instructions);
-                    content.push_str("\n\n");
                 }
                 "code-review" => {
                     content.push_str("## Code Review Role\n\n");
                     content.push_str(&module.agent_instructions);
-                    content.push_str("\n\n");
                 }
                 _ => {}
             }
+            let selected_module_files = module
+                .files
+                .iter()
+                .filter(|file| {
+                    selected_files
+                        .iter()
+                        .any(|selected| selected.path == file.path)
+                })
+                .collect::<Vec<_>>();
+            if !selected_module_files.is_empty() {
+                content.push_str("\n\nUse the selected module files:\n");
+                for file in selected_module_files {
+                    content.push_str(&format!(
+                        "- **{}**: [{}]({})\n",
+                        file.label, file.path, file.path
+                    ));
+                }
+            }
+            content.push('\n');
         }
 
         content.push_str("## Multi-Module Order\n\n");
         if selected_modules.len() > 1 {
-            content.push_str("Technical Design -> Feature Development -> Code Review\n");
+            content.push_str(
+                &selected_modules
+                    .iter()
+                    .map(|module| module.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" -> "),
+            );
+            content.push('\n');
         } else {
             content.push_str("Single module execution.\n");
         }
-        if selected_modules.iter().any(|m| m.id == "code-review") {
+        if selected_modules.iter().any(|m| m.id == "code-review")
+            && selected_modules
+                .iter()
+                .any(|m| m.id == "feature-development")
+        {
             content
                 .push_str("Failed review returns work to Feature Development before re-review.\n");
         }
@@ -569,7 +624,23 @@ impl HarnessService {
         content.push_str("The work is complete only when the selected verification and quality criteria pass and the evidence is recorded.\n\n");
 
         content.push_str("## End Of Session\n\n");
-        content.push_str("Update the selected task-status and session-handoff files, record unresolved risks, and leave the next step explicit.\n");
+        if selected_files
+            .iter()
+            .any(|file| file.path == "docs/task-status.md")
+        {
+            content.push_str(
+                "Update [docs/task-status.md](docs/task-status.md) with the verified state.\n",
+            );
+        }
+        if selected_files
+            .iter()
+            .any(|file| file.path == "docs/session-handoff.md")
+        {
+            content.push_str(
+                "Update [docs/session-handoff.md](docs/session-handoff.md) with the next step.\n",
+            );
+        }
+        content.push_str("Record unresolved risks and leave the next step explicit in the selected state files.\n");
 
         content
     }
@@ -1927,6 +1998,103 @@ mod tests {
         assert!(content.contains("## Feature Development Role"));
         assert!(content.contains("## Code Review Role"));
         assert!(content.contains("Technical Design -> Feature Development -> Code Review"));
+    }
+
+    #[test]
+    fn custom_work_accepts_code_standard_files() {
+        let fixture = TempFixture::new();
+        let repo = Arc::new(MockHarnessRepo {
+            items: Mutex::new(Vec::new()),
+        });
+        let service =
+            HarnessService::with_harnesses_dir(repo, Arc::new(MockSkillRepo), fixture.0.clone());
+
+        let detail = service
+            .create_harness_template(CreateHarnessTemplateInput {
+                name: "Custom code artifacts".into(),
+                description: "".into(),
+                work_type: "custom".into(),
+                preset_id: None,
+                selected_modules: vec![],
+                optional_files: vec![
+                    "docs/feature_list.json".into(),
+                    "docs/review-findings.md".into(),
+                ],
+            })
+            .unwrap();
+
+        assert!(detail
+            .files
+            .iter()
+            .any(|file| file.path == "docs/feature_list.json"));
+        assert!(detail
+            .files
+            .iter()
+            .any(|file| file.path == "docs/review-findings.md"));
+    }
+
+    #[test]
+    fn code_agents_follow_canonical_selected_module_order_only() {
+        let fixture = TempFixture::new();
+        let repo = Arc::new(MockHarnessRepo {
+            items: Mutex::new(Vec::new()),
+        });
+        let service =
+            HarnessService::with_harnesses_dir(repo, Arc::new(MockSkillRepo), fixture.0.clone());
+
+        let detail = service
+            .create_harness_template(CreateHarnessTemplateInput {
+                name: "Develop then review".into(),
+                description: "".into(),
+                work_type: "code".into(),
+                preset_id: None,
+                selected_modules: vec!["code-review".into(), "feature-development".into()],
+                optional_files: vec![
+                    "docs/feature_list.json".into(),
+                    "docs/review-rubric.md".into(),
+                    "docs/review-findings.md".into(),
+                ],
+            })
+            .unwrap();
+        let agents = service
+            .read_harness_file(&detail.id, "AGENTS.md")
+            .unwrap()
+            .content;
+
+        assert!(agents.contains("Feature Development -> Code Review"));
+        assert!(!agents.contains("Technical Design -> Feature Development -> Code Review"));
+        assert!(!agents.contains("## Technical Design Role"));
+        assert!(agents.find("## Feature Development Role") < agents.find("## Code Review Role"));
+    }
+
+    #[test]
+    fn code_agents_do_not_require_deselected_status_or_handoff_files() {
+        let fixture = TempFixture::new();
+        let repo = Arc::new(MockHarnessRepo {
+            items: Mutex::new(Vec::new()),
+        });
+        let service =
+            HarnessService::with_harnesses_dir(repo, Arc::new(MockSkillRepo), fixture.0.clone());
+
+        let detail = service
+            .create_harness_template(CreateHarnessTemplateInput {
+                name: "Minimal development".into(),
+                description: "".into(),
+                work_type: "code".into(),
+                preset_id: None,
+                selected_modules: vec!["feature-development".into()],
+                optional_files: vec!["docs/feature_list.json".into()],
+            })
+            .unwrap();
+        let agents = service
+            .read_harness_file(&detail.id, "AGENTS.md")
+            .unwrap()
+            .content;
+
+        assert!(!agents.contains("docs/task-status.md"));
+        assert!(!agents.contains("docs/session-handoff.md"));
+        assert!(!agents.contains("update status"));
+        assert!(!agents.contains("Update the selected task-status"));
     }
 
     #[test]
