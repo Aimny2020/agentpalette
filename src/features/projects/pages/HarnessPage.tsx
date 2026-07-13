@@ -278,6 +278,16 @@ function ManagedHarnessEditor({ status, files, selectedFile, activeFile, draft, 
               </button>
             ))}
           </div>
+          {status.warnings.length > 0 && (
+            <div className="project-harness-sidebar-warnings" style={{ margin: 'var(--space-2) 0', padding: 'var(--space-2)', border: '1px solid var(--color-outline)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-soft)' }}>
+              {status.warnings.map((warning: string) => (
+                <p key={warning} className="project-harness-warning" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem', margin: '0.2rem 0', color: '#a15c00', fontSize: '0.78rem', lineHeight: '1.4' }}>
+                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
+                  <span>{warning}</span>
+                </p>
+              ))}
+            </div>
+          )}
           <div className="project-harness-create-file">
             <input value={newFilePath} onChange={(event) => setNewFilePath(event.target.value)} aria-label="新 Harness 文件路径" />
             <button type="button" className="button button--secondary" onClick={onCreate} disabled={!newFilePath.trim() || createPending}>新增文件</button>
@@ -301,40 +311,6 @@ function ManagedHarnessEditor({ status, files, selectedFile, activeFile, draft, 
             </>
           ) : (
             <div className="project-harness-empty-editor">选择一个 Harness 文件开始编辑。</div>
-          )}
-        </div>
-
-        {/* Column 3: Sidebar properties */}
-        <div className="project-harness-meta-sidebar">
-          <div className="project-harness-sidebar-section">
-            <h4>Harness 属性</h4>
-            <div className="project-harness-sidebar-kv">
-              <div className="project-harness-sidebar-kv-item">
-                <span className="project-harness-sidebar-kv-label">来源模板</span>
-                <strong className="project-harness-sidebar-kv-value">{status.sourceTemplateId || '未知'}</strong>
-              </div>
-              <div className="project-harness-sidebar-kv-item">
-                <span className="project-harness-sidebar-kv-label">来源状态</span>
-                <strong className="project-harness-sidebar-kv-value">{status.sourceStatus === 'changed' ? '模板已有变化' : status.sourceStatus === 'deleted' ? '原模板已删除' : '独立项目副本'}</strong>
-              </div>
-              <div className="project-harness-sidebar-kv-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                <span className="project-harness-sidebar-kv-label">应用时间</span>
-                <strong className="project-harness-sidebar-kv-value" style={{ wordBreak: 'break-all', fontSize: '0.78rem', marginTop: '0.1rem' }}>{status.appliedAt || '未知'}</strong>
-              </div>
-            </div>
-          </div>
-          {status.warnings.length > 0 && (
-            <div className="project-harness-sidebar-section">
-              <h4>警告信息</h4>
-              <div className="project-harness-sidebar-warnings">
-                {status.warnings.map((warning: string) => (
-                  <p key={warning} className="project-harness-warning" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem', margin: '0.2rem 0', color: '#a15c00', fontSize: '0.78rem', lineHeight: '1.4' }}>
-                    <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
-                    <span>{warning}</span>
-                  </p>
-                ))}
-              </div>
-            </div>
           )}
         </div>
       </div>

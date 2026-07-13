@@ -170,9 +170,10 @@ body:has(.project-harness-page-container) {
   padding: var(--space-3) !important;
 }
 
+/* 2-Column Split View for Editor */
 .project-harness-editor-layout-new {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: var(--space-3);
   flex: 1;
   min-height: 0;
