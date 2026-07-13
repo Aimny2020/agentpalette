@@ -87,3 +87,259 @@
 .project-harness-create-file input { flex: 1; min-width: 0; border: 1px solid var(--color-outline); border-radius: 5px; padding: .55rem .65rem; background: var(--color-canvas); color: var(--color-ink); font: .84rem ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 880px) { .project-harness-apply-workspace { grid-template-columns: 235px minmax(0, 1fr); } .project-harness-preview-grid { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .project-harness-apply-workspace { display: block; } .project-harness-template-rail { border-right: 0; border-bottom: 1px solid var(--color-outline); } .project-harness-template-list { max-height: 220px; overflow: auto; } .project-harness-apply-main { min-height: 560px; padding: var(--space-3); } .project-harness-preview-header, .project-harness-conflict-row, .project-harness-apply-footer, .project-harness-adopt-strip { align-items: flex-start; flex-direction: column; } .project-harness-template-meta { justify-content: flex-start; } .project-harness-apply-footer .button, .project-harness-adopt-strip .button { margin-left: 0; } .project-harness-meta, .project-harness-editor-layout { grid-template-columns: 1fr; } .project-harness-file-list { border-right: 0; border-bottom: 1px solid var(--color-outline); padding: 0 0 var(--space-2); margin-bottom: var(--space-2); } .project-harness-conflict-actions { flex-wrap: wrap; } }
+
+/* Height Locking for Project Harness Page */
+body:has(.project-harness-page-container) {
+  overflow: hidden !important;
+}
+
+.app-shell:has(.project-harness-page-container) {
+  height: 100vh;
+  overflow: hidden !important;
+}
+
+.shell-body:has(.project-harness-page-container) {
+  height: calc(100vh - 4rem);
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.workspace-main:has(.project-harness-page-container) {
+  height: 100%;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-main:has(.project-harness-page-container) > .page-stack {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: var(--space-2);
+}
+
+/* Container & Header Redesign */
+.project-harness-page-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.project-harness-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.project-harness-header-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.project-harness-header-title h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.project-harness-header-desc {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.project-harness-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 3-Column Split View for Editor */
+.project-harness-main-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) !important;
+}
+
+.project-harness-editor-layout-new {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Column 1: Files List */
+.project-harness-file-list-new {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-outline);
+  padding-right: var(--space-2);
+  overflow: hidden;
+}
+
+.project-harness-file-list-new h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.project-harness-file-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-right: 4px;
+}
+
+.project-harness-file-list-scroll button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  text-align: left;
+  padding: 0.55rem 0.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.project-harness-file-list-scroll button:hover {
+  background: var(--color-surface-soft);
+}
+
+.project-harness-file-list-scroll button.is-active {
+  background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+  color: var(--color-primary-ink);
+  font-weight: 700;
+}
+
+.project-harness-file-list-scroll button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.83rem;
+  flex: 1;
+}
+
+.project-harness-file-list-scroll button i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c66a00;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Column 2: Code Editor */
+.project-harness-editor-new {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-harness-editor-new .project-harness-empty-editor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.project-harness-editor-textarea-new {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+}
+
+.project-harness-editor-textarea-new textarea {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  box-sizing: border-box;
+  border: 1px solid var(--color-outline);
+  border-radius: 5px;
+  padding: 0.85rem;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  outline: none;
+}
+
+.project-harness-editor-textarea-new textarea:focus {
+  border-color: var(--color-primary);
+}
+
+/* Column 3: Sidebar Properties */
+.project-harness-meta-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-left: 1px solid var(--color-outline);
+  padding-left: var(--space-3);
+  overflow-y: auto;
+}
+
+.project-harness-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-harness-sidebar-section h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  letter-spacing: 0.05em;
+}
+
+.project-harness-sidebar-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.project-harness-sidebar-kv-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.project-harness-sidebar-kv-label {
+  color: var(--color-muted);
+}
+
+.project-harness-sidebar-kv-value {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.project-harness-sidebar-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
