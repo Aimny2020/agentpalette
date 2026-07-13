@@ -3,12 +3,9 @@ import { NavLink } from 'react-router-dom';
 import { ThemeToggle } from '../../shared/theme/ThemeToggle';
 
 const navigation = [
-  { label: '控制面板', to: '/' },
   { label: '项目管理', to: '/projects' },
   { label: 'Skills', to: '/skills' },
   { label: 'Harness', to: '/harness' },
-  { label: 'MCP', to: '/mcp' },
-  { label: '任务', to: '/tasks' },
   { label: '设置', to: '/settings' },
 ];
 

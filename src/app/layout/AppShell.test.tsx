@@ -39,9 +39,12 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
-    for (const label of ['控制面板', '项目管理', 'Skills', 'MCP', '任务', '设置']) {
+    for (const label of ['项目管理', 'Skills', 'Harness', '设置']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
+    expect(screen.queryByRole('link', { name: '控制面板' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '任务' })).not.toBeInTheDocument();
     // Wait for the query to resolve and show the project
     expect(await screen.findByText('Agent-Forge-Core')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '项目管理' })).toHaveAttribute(
