@@ -12,6 +12,7 @@ import {
   Save,
   Search,
   ShieldCheck,
+  Plus,
 } from 'lucide-react';
 import {
   adoptProjectHarness,
@@ -263,12 +264,35 @@ interface ManagedHarnessEditorProps {
 }
 
 function ManagedHarnessEditor({ status, files, selectedFile, activeFile, draft, newFilePath, setNewFilePath, onOpenFile, onDraftChange, onSave, onDelete, onCreate, savePending, deletePending, createPending }: ManagedHarnessEditorProps) {
+  const [isCreatingFile, setIsCreatingFile] = useState(false);
+
+  const handleCreate = () => {
+    onCreate();
+    setIsCreatingFile(false);
+  };
+
   return (
     <Card className="project-harness-main-card">
       <div className="project-harness-editor-layout-new">
         {/* Column 1: Harness Files List */}
         <div className="project-harness-file-list-new">
-          <h3>Harness 文件</h3>
+          <div className="project-harness-file-list-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+            <h3 style={{ margin: 0 }}>Harness 文件</h3>
+            <button
+              type="button"
+              className="create-cat-btn"
+              onClick={() => {
+                setIsCreatingFile(true);
+                setNewFilePath('docs/');
+              }}
+              title="新建文件"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', padding: '2px', borderRadius: '4px' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-ink)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; }}
+            >
+              <Plus size={16} />
+            </button>
+          </div>
           <div className="project-harness-file-list-scroll">
             {files.map((file) => (
               <button type="button" key={file.path} className={selectedFile === file.path ? 'is-active' : ''} onClick={() => onOpenFile(file.path)}>
@@ -277,6 +301,38 @@ function ManagedHarnessEditor({ status, files, selectedFile, activeFile, draft, 
                 {file.changedSinceApply && <i title="已修改" />}
               </button>
             ))}
+            {isCreatingFile && (
+              <div className="project-harness-file-item-creating" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 0.5rem' }}>
+                <FileText size={15} style={{ color: 'var(--color-muted)' }} />
+                <input
+                  type="text"
+                  value={newFilePath}
+                  onChange={(event) => setNewFilePath(event.target.value)}
+                  placeholder="新文件路径 (例: docs/rules.md)"
+                  autoFocus
+                  onBlur={() => {
+                    setTimeout(() => {
+                      if (!newFilePath.trim() || newFilePath === 'docs/') {
+                        setIsCreatingFile(false);
+                      }
+                    }, 200);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      const val = newFilePath.trim();
+                      if (val && val !== 'docs/') {
+                        handleCreate();
+                      } else {
+                        setIsCreatingFile(false);
+                      }
+                    } else if (event.key === 'Escape') {
+                      setIsCreatingFile(false);
+                    }
+                  }}
+                  style={{ flex: 1, minWidth: 0, border: '1px solid var(--color-outline)', borderRadius: '4px', padding: '2px 6px', fontSize: '0.8rem', background: 'var(--color-canvas)', color: 'var(--color-ink)', outline: 'none' }}
+                />
+              </div>
+            )}
           </div>
           {status.warnings.length > 0 && (
             <div className="project-harness-sidebar-warnings" style={{ margin: 'var(--space-2) 0', padding: 'var(--space-2)', border: '1px solid var(--color-outline)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-soft)' }}>
@@ -288,10 +344,6 @@ function ManagedHarnessEditor({ status, files, selectedFile, activeFile, draft, 
               ))}
             </div>
           )}
-          <div className="project-harness-create-file">
-            <input value={newFilePath} onChange={(event) => setNewFilePath(event.target.value)} aria-label="新 Harness 文件路径" />
-            <button type="button" className="button button--secondary" onClick={onCreate} disabled={!newFilePath.trim() || createPending}>新增文件</button>
-          </div>
         </div>
 
         {/* Column 2: Editor */}
