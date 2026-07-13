@@ -1086,7 +1086,11 @@ impl HarnessService {
                     None
                 };
 
+                let mut validated_modules = std::collections::HashSet::new();
                 for mod_id in &m.selected_modules {
+                    if !validated_modules.insert(mod_id.clone()) {
+                        continue;
+                    }
                     if let Some(module) =
                         crate::domain::harness_presets::find_code_work_module(mod_id)
                     {
