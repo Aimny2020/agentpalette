@@ -35,11 +35,19 @@ pub fn run() {
                 Arc::clone(&database) as Arc<dyn crate::domain::ports::HarnessRepository>,
                 Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>,
             );
+            let project_harnesses =
+                application::project_harness_service::ProjectHarnessService::new(
+                    Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>,
+                    Arc::clone(&database) as Arc<dyn crate::domain::ports::HarnessRepository>,
+                    Arc::clone(&database)
+                        as Arc<dyn crate::domain::ports::ProjectHarnessRepository>,
+                );
             app.manage(AppState {
                 health: HealthService::new(database, system),
                 skills,
                 repo,
                 harnesses,
+                project_harnesses,
             });
             Ok(())
         })
@@ -85,7 +93,16 @@ pub fn run() {
             validate_harness_template,
             duplicate_harness_template,
             get_code_work_modules,
-            get_code_work_shared_files
+            get_code_work_shared_files,
+            get_project_harness_status,
+            preview_project_harness_application,
+            apply_project_harness,
+            read_project_harness_file,
+            write_project_harness_file,
+            unmanage_project_harness,
+            adopt_project_harness,
+            create_project_harness_file,
+            delete_project_harness_file
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgentForge");

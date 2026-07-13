@@ -21,6 +21,10 @@ import type {
   HarnessPresetFile,
   HarnessValidationReport,
   CodeWorkModule,
+  ProjectHarnessStatus,
+  ProjectHarnessApplicationPreview,
+  ProjectHarnessApplyInput,
+  ProjectHarnessFile,
 } from './types';
 
 export class AppError extends Error {
@@ -310,6 +314,88 @@ export async function getCodeWorkModules(): Promise<CodeWorkModule[]> {
 export async function getCodeWorkSharedFiles(): Promise<HarnessPresetFile[]> {
   try {
     return await invoke<HarnessPresetFile[]>('get_code_work_shared_files');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getProjectHarnessStatus(projectId: string): Promise<ProjectHarnessStatus> {
+  try {
+    return await invoke<ProjectHarnessStatus>('get_project_harness_status', { projectId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function previewProjectHarnessApplication(
+  projectId: string,
+  templateId: string,
+): Promise<ProjectHarnessApplicationPreview> {
+  try {
+    return await invoke<ProjectHarnessApplicationPreview>('preview_project_harness_application', {
+      projectId,
+      templateId,
+    });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function applyProjectHarness(input: ProjectHarnessApplyInput): Promise<ProjectHarnessStatus> {
+  try {
+    return await invoke<ProjectHarnessStatus>('apply_project_harness', { input });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function readProjectHarnessFile(projectId: string, path: string): Promise<ProjectHarnessFile> {
+  try {
+    return await invoke<ProjectHarnessFile>('read_project_harness_file', { projectId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function writeProjectHarnessFile(
+  projectId: string,
+  path: string,
+  content: string,
+): Promise<ProjectHarnessFile> {
+  try {
+    return await invoke<ProjectHarnessFile>('write_project_harness_file', { projectId, path, content });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function unmanageProjectHarness(projectId: string): Promise<void> {
+  try {
+    await invoke<void>('unmanage_project_harness', { projectId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function adoptProjectHarness(projectId: string): Promise<ProjectHarnessStatus> {
+  try {
+    return await invoke<ProjectHarnessStatus>('adopt_project_harness', { projectId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function createProjectHarnessFile(projectId: string, path: string): Promise<ProjectHarnessFile> {
+  try {
+    return await invoke<ProjectHarnessFile>('create_project_harness_file', { projectId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function deleteProjectHarnessFile(projectId: string, path: string, explicitConfirmation = false): Promise<void> {
+  try {
+    await invoke<void>('delete_project_harness_file', { projectId, path, explicitConfirmation });
   } catch (error) {
     throw normalizeError(error);
   }

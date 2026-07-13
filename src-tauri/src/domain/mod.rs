@@ -5,5 +5,6 @@ pub mod harness_presets;
 pub mod health;
 pub mod ports;
 pub mod project;
+pub mod project_harness;
 pub mod skill;
 pub mod task;

@@ -1,0 +1,32 @@
+.project-harness-page { max-width: 980px; }
+.project-harness-header, .project-harness-section-heading, .project-harness-actions, .project-harness-editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.project-harness-header h2 { margin: 0; }
+.project-harness-header .muted-copy { margin: .35rem 0 0; }
+.project-harness-label { display: block; margin: var(--space-3) 0 var(--space-1); font-size: .85rem; font-weight: 600; }
+.project-harness-template-select { width: 100%; min-height: 2.5rem; padding: 0 .75rem; border: 1px solid var(--color-outline); border-radius: 6px; background: var(--color-canvas); color: var(--color-ink); }
+.project-harness-application { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.project-harness-file-summary, .project-harness-conflict { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: .75rem; border: 1px solid var(--color-outline); border-radius: 6px; }
+.project-harness-file-summary span { color: var(--color-muted); font-size: .85rem; }
+.project-harness-conflict > div:first-child { display: flex; align-items: center; gap: .5rem; }
+.project-harness-conflict-actions { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; }
+.project-harness-conflict-actions button { border: 1px solid var(--color-outline); background: var(--color-canvas); color: var(--color-ink); border-radius: 5px; padding: .35rem .55rem; cursor: pointer; font-size: .8rem; }
+.project-harness-conflict-actions button.is-selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-canvas)); }
+.project-harness-warning { display: flex; align-items: center; gap: .45rem; color: #a15c00; font-size: .88rem; }
+.project-harness-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.project-harness-meta div { display: grid; gap: .25rem; }
+.project-harness-meta span { color: var(--color-muted); font-size: .78rem; }
+.project-harness-meta strong { overflow-wrap: anywhere; font-size: .9rem; }
+.project-harness-editor-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 460px; }
+.project-harness-file-list { border-right: 1px solid var(--color-outline); padding-right: var(--space-2); }
+.project-harness-file-list h3 { margin-top: 0; }
+.project-harness-file-list button { display: flex; align-items: center; width: 100%; gap: .45rem; border: 0; background: transparent; color: var(--color-ink); text-align: left; padding: .55rem .5rem; border-radius: 5px; cursor: pointer; }
+.project-harness-file-list button.is-active { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-canvas)); color: var(--color-accent); }
+.project-harness-file-list button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .83rem; }
+.project-harness-file-list button i { width: 6px; height: 6px; border-radius: 50%; background: #c66a00; margin-left: auto; }
+.project-harness-editor { min-width: 0; padding-left: var(--space-2); }
+.project-harness-editor-toolbar { margin-bottom: var(--space-2); }
+.project-harness-editor textarea { display: block; width: 100%; min-height: 410px; resize: vertical; box-sizing: border-box; border: 1px solid var(--color-outline); border-radius: 5px; padding: .85rem; background: var(--color-canvas); color: var(--color-ink); font: .86rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.project-harness-empty-editor { color: var(--color-muted); padding: var(--space-3); }
+.project-harness-create-file { display: flex; gap: .5rem; margin-top: var(--space-2); }
+.project-harness-create-file input { flex: 1; min-width: 0; border: 1px solid var(--color-outline); border-radius: 5px; padding: .55rem .65rem; background: var(--color-canvas); color: var(--color-ink); font: .84rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+@media (max-width: 680px) { .project-harness-meta, .project-harness-editor-layout { grid-template-columns: 1fr; } .project-harness-file-list { border-right: 0; border-bottom: 1px solid var(--color-outline); padding: 0 0 var(--space-2); margin-bottom: var(--space-2); } .project-harness-conflict { align-items: flex-start; flex-direction: column; } .project-harness-conflict-actions { justify-content: flex-start; } }

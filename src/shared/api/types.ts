@@ -246,3 +246,56 @@ export interface HarnessExtractOptions {
   presetId?: string;
   selectedFiles: string[];
 }
+
+export interface ProjectHarnessAppliedFile {
+  path: string;
+  appliedContentHash: string;
+  createdByApplication: boolean;
+}
+
+export interface ProjectHarnessFile {
+  path: string;
+  content: string;
+  exists: boolean;
+  changedSinceApply: boolean;
+  deletionEligible: boolean;
+}
+
+export interface ProjectHarnessStatus {
+  projectId: string;
+  state: 'absent' | 'unmanaged_detected' | 'managed' | 'invalid';
+  sourceTemplateId?: string;
+  sourceTemplateHash?: string;
+  appliedAt?: string;
+  sourceStatus: 'unknown' | 'available' | 'changed' | 'deleted';
+  hasAgentsMd: boolean;
+  manifestParseable: boolean;
+  files: ProjectHarnessFile[];
+  warnings: string[];
+}
+
+export interface ProjectHarnessConflict {
+  path: string;
+  templateContent: string;
+  projectContent?: string;
+}
+
+export interface ProjectHarnessApplicationPreview {
+  projectId: string;
+  templateId: string;
+  conflicts: ProjectHarnessConflict[];
+  templateFiles: ProjectHarnessFile[];
+  finalAgentsReferences: string[];
+  missingAgentsReferences: string[];
+}
+
+export interface ProjectHarnessFileDecision {
+  path: string;
+  action: 'keep' | 'overwrite' | 'skip';
+}
+
+export interface ProjectHarnessApplyInput {
+  projectId: string;
+  templateId: string;
+  decisions: ProjectHarnessFileDecision[];
+}

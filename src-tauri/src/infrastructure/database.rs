@@ -6,6 +6,7 @@ use rusqlite::OptionalExtension;
 
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::health::{DatabasePort, DatabaseStatus};
+use crate::domain::ports::ProjectHarnessRepository;
 use crate::domain::ports::{HarnessRepository, SkillRepository};
 use crate::domain::project::Project;
 use crate::domain::skill::{Category, SkillPackageRecord, SourceKind, UserSkillMeta};
@@ -18,6 +19,8 @@ const SKILL_DESCRIPTIONS_MIGRATION: &str =
 const HARNESSES_MIGRATION: &str = include_str!("../../migrations/005_harness_templates.sql");
 const HARNESS_PRESET_MIGRATION: &str =
     include_str!("../../migrations/006_harness_template_preset.sql");
+const PROJECT_HARNESSES_MIGRATION: &str =
+    include_str!("../../migrations/007_project_harnesses.sql");
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,
@@ -75,6 +78,9 @@ impl SqliteDatabase {
                 .execute("INSERT OR IGNORE INTO _migrations (version) VALUES (6)", [])
                 .map_err(database_error)?;
         }
+        connection
+            .execute_batch(PROJECT_HARNESSES_MIGRATION)
+            .map_err(database_error)?;
         Ok(Self {
             connection: Mutex::new(connection),
         })
@@ -788,6 +794,122 @@ impl HarnessRepository for SqliteDatabase {
     }
 }
 
+impl ProjectHarnessRepository for SqliteDatabase {
+    fn get_project_harness(
+        &self,
+        project_id: &str,
+    ) -> DomainResult<Option<crate::domain::project_harness::ProjectHarnessRecord>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let record = connection
+            .query_row(
+                "SELECT project_id, source_template_id, source_template_hash, applied_at, managed_state
+                 FROM project_harnesses WHERE project_id = ?1",
+                [project_id],
+                |row| {
+                    Ok(crate::domain::project_harness::ProjectHarnessRecord {
+                        project_id: row.get(0)?,
+                        source_template_id: row.get(1)?,
+                        source_template_hash: row.get(2)?,
+                        applied_at: row.get(3)?,
+                        managed_state: row.get(4)?,
+                        applied_files: Vec::new(),
+                    })
+                },
+            )
+            .optional()
+            .map_err(database_error)?;
+
+        let Some(mut record) = record else {
+            return Ok(None);
+        };
+        let mut statement = connection
+            .prepare(
+                "SELECT path, applied_content_hash, created_by_application
+                 FROM project_harness_files WHERE project_id = ?1 ORDER BY path",
+            )
+            .map_err(database_error)?;
+        let files = statement
+            .query_map([project_id], |row| {
+                Ok(crate::domain::project_harness::ProjectHarnessAppliedFile {
+                    path: row.get(0)?,
+                    applied_content_hash: row.get(1)?,
+                    created_by_application: row.get::<_, i64>(2)? != 0,
+                })
+            })
+            .map_err(database_error)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(database_error)?;
+        record.applied_files = files;
+        Ok(Some(record))
+    }
+
+    fn save_project_harness(
+        &self,
+        record: &crate::domain::project_harness::ProjectHarnessRecord,
+    ) -> DomainResult<()> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        let tx = connection.transaction().map_err(database_error)?;
+        tx.execute(
+            "INSERT INTO project_harnesses
+             (project_id, source_template_id, source_template_hash, applied_at, managed_state)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(project_id) DO UPDATE SET
+               source_template_id = excluded.source_template_id,
+               source_template_hash = excluded.source_template_hash,
+               applied_at = excluded.applied_at,
+               managed_state = excluded.managed_state",
+            rusqlite::params![
+                record.project_id,
+                record.source_template_id,
+                record.source_template_hash,
+                record.applied_at,
+                record.managed_state
+            ],
+        )
+        .map_err(database_error)?;
+        tx.execute(
+            "DELETE FROM project_harness_files WHERE project_id = ?1",
+            [&record.project_id],
+        )
+        .map_err(database_error)?;
+        for file in &record.applied_files {
+            tx.execute(
+                "INSERT INTO project_harness_files
+                 (project_id, path, applied_content_hash, created_by_application)
+                 VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![
+                    record.project_id,
+                    file.path,
+                    file.applied_content_hash,
+                    file.created_by_application as i64
+                ],
+            )
+            .map_err(database_error)?;
+        }
+        tx.commit().map_err(database_error)
+    }
+
+    fn delete_project_harness(&self, project_id: &str) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "DELETE FROM project_harnesses WHERE project_id = ?1",
+                [project_id],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+}
+
 fn database_error(error: rusqlite::Error) -> DomainError {
     DomainError::Database(error.to_string())
 }
@@ -815,6 +937,42 @@ mod tests {
         assert!(database.has_table("project_skill_states").unwrap());
         assert!(database.has_table("skill_descriptions").unwrap());
         assert!(database.has_table("harness_templates").unwrap());
+        assert!(database.has_table("project_harnesses").unwrap());
+        assert!(database.has_table("project_harness_files").unwrap());
+    }
+
+    #[test]
+    fn project_harness_metadata_round_trips_without_template_storage() {
+        use crate::domain::ports::ProjectHarnessRepository;
+        use crate::domain::project_harness::{ProjectHarnessAppliedFile, ProjectHarnessRecord};
+
+        let database = SqliteDatabase::open_in_memory().unwrap();
+        database
+            .connection
+            .lock()
+            .unwrap()
+            .execute(
+                "INSERT INTO projects (id, name, path, created_at) VALUES ('p1', 'Project 1', '/p1', '2026-07-13T00:00:00Z')",
+                [],
+            )
+            .unwrap();
+
+        let record = ProjectHarnessRecord {
+            project_id: "p1".into(),
+            source_template_id: Some("template-1".into()),
+            source_template_hash: Some("hash-1".into()),
+            applied_at: "2026-07-13T00:00:00Z".into(),
+            managed_state: "managed".into(),
+            applied_files: vec![ProjectHarnessAppliedFile {
+                path: "AGENTS.md".into(),
+                applied_content_hash: "file-hash".into(),
+                created_by_application: true,
+            }],
+        };
+
+        database.save_project_harness(&record).unwrap();
+        let loaded = database.get_project_harness("p1").unwrap().unwrap();
+        assert_eq!(loaded, record);
     }
 
     #[test]

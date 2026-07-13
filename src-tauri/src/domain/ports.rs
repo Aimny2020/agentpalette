@@ -98,6 +98,18 @@ pub trait HarnessRepository: Send + Sync {
     fn delete_harness(&self, id: &str) -> DomainResult<()>;
 }
 
+pub trait ProjectHarnessRepository: Send + Sync {
+    fn get_project_harness(
+        &self,
+        project_id: &str,
+    ) -> DomainResult<Option<crate::domain::project_harness::ProjectHarnessRecord>>;
+    fn save_project_harness(
+        &self,
+        record: &crate::domain::project_harness::ProjectHarnessRecord,
+    ) -> DomainResult<()>;
+    fn delete_project_harness(&self, project_id: &str) -> DomainResult<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;
