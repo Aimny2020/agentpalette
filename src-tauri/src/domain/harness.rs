@@ -44,6 +44,8 @@ pub struct HarnessManifest {
     pub work_type: String,
     #[serde(default)]
     pub created_from_preset: Option<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
     pub source: String,
     pub required_files: Vec<String>,
     #[serde(default)]
@@ -58,6 +60,8 @@ pub struct HarnessTemplateSummary {
     pub description: String,
     pub work_type: String,
     pub created_from_preset: Option<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
     pub source_type: String, // "local" | "project"
     pub source_path: Option<String>,
     pub created_at: String,
@@ -96,6 +100,8 @@ pub struct HarnessTemplateDetail {
     pub description: String,
     pub work_type: String,
     pub created_from_preset: Option<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
     pub source_type: String,
     pub source_path: Option<String>,
     pub created_at: String,
@@ -118,6 +124,8 @@ pub struct CreateHarnessTemplateInput {
     pub description: String,
     pub work_type: String,
     pub preset_id: Option<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
     pub optional_files: Vec<String>,
 }
 

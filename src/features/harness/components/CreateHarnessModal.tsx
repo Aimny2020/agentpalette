@@ -84,6 +84,7 @@ export function CreateHarnessModal({
       description: description.trim(),
       workType,
       presetId,
+      selectedModules: [],
       optionalFiles: selectedFiles,
     });
   };

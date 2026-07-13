@@ -104,6 +104,7 @@ impl HarnessService {
                 description,
                 work_type,
                 created_from_preset,
+                selected_modules,
                 source_type,
                 source_path,
                 created_at,
@@ -117,6 +118,7 @@ impl HarnessService {
                         description: m.description.clone(),
                         work_type: m.work_type.clone(),
                         created_from_preset: m.created_from_preset.clone(),
+                        selected_modules: m.selected_modules.clone(),
                         source_type: m.source.clone(),
                         source_path: None,
                         created_at: chrono::Utc::now().to_rfc3339(),
@@ -131,6 +133,7 @@ impl HarnessService {
                     m.description.clone(),
                     m.work_type.clone(),
                     m.created_from_preset.clone().or(record.created_from_preset),
+                    m.selected_modules.clone(),
                     record.source_type,
                     record.source_path,
                     record.created_at,
@@ -145,6 +148,7 @@ impl HarnessService {
                         description: "".into(),
                         work_type: "custom".into(),
                         created_from_preset: None,
+                        selected_modules: Vec::new(),
                         source_type: "local".into(),
                         source_path: None,
                         created_at: chrono::Utc::now().to_rfc3339(),
@@ -159,6 +163,7 @@ impl HarnessService {
                     record.description,
                     record.work_type,
                     record.created_from_preset,
+                    Vec::new(),
                     record.source_type,
                     record.source_path,
                     record.created_at,
@@ -172,6 +177,7 @@ impl HarnessService {
                 description,
                 work_type,
                 created_from_preset,
+                selected_modules,
                 source_type,
                 source_path,
                 created_at,
@@ -228,6 +234,7 @@ impl HarnessService {
             description: input.description.clone(),
             work_type: input.work_type.clone(),
             created_from_preset: input.preset_id.clone(),
+            selected_modules: input.selected_modules.clone(),
             source: "local".into(),
             required_files: vec!["AGENTS.md".into(), "docs/harness.toml".into()],
             files: Vec::new(),
@@ -263,6 +270,7 @@ impl HarnessService {
             description: input.description.clone(),
             work_type: input.work_type.clone(),
             created_from_preset: input.preset_id.clone(),
+            selected_modules: input.selected_modules.clone(),
             source_type: "local".into(),
             source_path: None,
             created_at: now.clone(),
@@ -289,6 +297,15 @@ impl HarnessService {
             if input.preset_id.is_some() {
                 return Err(DomainError::Database(
                     "Custom Work cannot use a built-in preset".into(),
+                ));
+            }
+            return Ok(None);
+        }
+
+        if input.work_type == "code" {
+            if input.preset_id.is_some() {
+                return Err(DomainError::Database(
+                    "Code Work cannot use a built-in preset".into(),
                 ));
             }
             return Ok(None);
@@ -407,6 +424,10 @@ impl HarnessService {
             description: summary.description,
             work_type: summary.work_type,
             created_from_preset: summary.created_from_preset,
+            selected_modules: manifest
+                .as_ref()
+                .map(|m| m.selected_modules.clone())
+                .unwrap_or_default(),
             source_type: summary.source_type,
             source_path: summary.source_path,
             created_at: summary.created_at,
@@ -661,12 +682,14 @@ impl HarnessService {
         self.copy_harness_dir(&src, &dst)?;
 
         // Update new docs/harness.toml manifest
+        let mut manifest_modules = Vec::new();
         let manifest_path = dst.join("docs").join("harness.toml");
         if manifest_path.exists() {
             if let Ok(toml_content) = fs::read_to_string(&manifest_path) {
                 if let Ok(mut manifest) = toml::from_str::<HarnessManifest>(&toml_content) {
                     manifest.id = target_id.clone();
                     manifest.name = target_name.to_string();
+                    manifest_modules = manifest.selected_modules.clone();
                     if let Ok(updated_toml) = toml::to_string(&manifest) {
                         let _ = fs::write(&manifest_path, updated_toml);
                     }
@@ -676,17 +699,24 @@ impl HarnessService {
 
         let db_records = self.repo.get_harnesses()?;
         let now = chrono::Utc::now().to_rfc3339();
-        let (description, work_type, created_from_preset, source_type) =
+        let (description, work_type, created_from_preset, db_modules, source_type) =
             if let Some(old) = db_records.into_iter().find(|r| r.id == template_id) {
                 (
                     old.description,
                     old.work_type,
                     old.created_from_preset,
+                    old.selected_modules,
                     old.source_type,
                 )
             } else {
-                ("".into(), "custom".into(), None, "local".into())
+                ("".into(), "custom".into(), None, Vec::new(), "local".into())
             };
+
+        let selected_modules = if manifest_path.exists() {
+            manifest_modules
+        } else {
+            db_modules
+        };
 
         let summary = HarnessTemplateSummary {
             id: target_id.clone(),
@@ -694,6 +724,7 @@ impl HarnessService {
             description,
             work_type,
             created_from_preset,
+            selected_modules,
             source_type,
             source_path: None,
             created_at: now.clone(),
@@ -1010,6 +1041,7 @@ impl HarnessService {
             description: options.description,
             work_type: options.work_type,
             created_from_preset: None,
+            selected_modules: manifest.selected_modules.clone(),
             source_type: "local".into(),
             source_path: Some(source_path.to_string()),
             created_at: now.clone(),
@@ -1059,6 +1091,7 @@ impl HarnessService {
             description: description.to_string(),
             work_type: work_type.to_string(),
             created_from_preset: None,
+            selected_modules: Vec::new(),
             source: "local".into(),
             required_files,
             files,
@@ -1169,6 +1202,7 @@ impl HarnessService {
             description: options.description.clone(),
             work_type: options.work_type.clone(),
             created_from_preset: None,
+            selected_modules: Vec::new(),
             source: "local".into(),
             required_files,
             files,
@@ -1192,6 +1226,7 @@ impl HarnessService {
             description: options.description,
             work_type: options.work_type,
             created_from_preset: None,
+            selected_modules: Vec::new(),
             source_type: "project".into(),
             source_path: Some(project_path_str),
             created_at: now.clone(),
@@ -1404,8 +1439,9 @@ mod tests {
         let input = CreateHarnessTemplateInput {
             name: "My Template".into(),
             description: "A description".into(),
-            work_type: "document".into(),
-            preset_id: Some("document-academic-paper".into()),
+            work_type: "code".into(),
+            preset_id: None,
+            selected_modules: vec!["technical-design".into(), "feature-development".into()],
             optional_files: vec![
                 "docs/paper-outline.md".into(),
                 "docs/research-question.md".into(),
@@ -1416,19 +1452,30 @@ mod tests {
         assert!(uuid::Uuid::parse_str(&detail.id).is_ok());
         assert_eq!(detail.name, "My Template");
         assert_eq!(
-            detail.created_from_preset.as_deref(),
-            Some("document-academic-paper")
+            detail.selected_modules,
+            vec![
+                "technical-design".to_string(),
+                "feature-development".to_string(),
+            ]
         );
         assert_eq!(detail.files.len(), 4);
         assert!(detail.validation.is_valid);
         let agents = service.read_harness_file(&detail.id, "AGENTS.md").unwrap();
         assert!(agents.content.contains("docs/paper-outline.md"));
         assert!(agents.content.contains("docs/research-question.md"));
-        assert!(!agents.content.contains("docs/literature-review.md"));
+
+        let manifest_content = service
+            .read_harness_file(&detail.id, "docs/harness.toml")
+            .unwrap()
+            .content;
+        let manifest: HarnessManifest = toml::from_str(&manifest_content).unwrap();
+        assert_eq!(manifest.selected_modules, detail.selected_modules);
+        assert!(manifest.created_from_preset.is_none());
 
         let list = service.get_harness_templates().unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, detail.id);
+        assert_eq!(list[0].selected_modules, detail.selected_modules);
     }
 
     #[test]
@@ -1446,6 +1493,7 @@ mod tests {
                 description: "".into(),
                 work_type: "presentation".into(),
                 preset_id: Some("document-academic-paper".into()),
+                selected_modules: vec![],
                 optional_files: vec![],
             })
             .unwrap_err();
@@ -1468,6 +1516,7 @@ mod tests {
                 description: "".into(),
                 work_type: "custom".into(),
                 preset_id: Some("document-academic-paper".into()),
+                selected_modules: vec![],
                 optional_files: vec![],
             })
             .unwrap_err();
@@ -1489,6 +1538,7 @@ mod tests {
             description: "".into(),
             work_type: "custom".into(),
             preset_id: None,
+            selected_modules: vec![],
             optional_files: vec![],
         };
         let template_id = service.create_harness_template(input).unwrap().id;

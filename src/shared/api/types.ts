@@ -141,6 +141,7 @@ export interface HarnessManifest {
   description: string;
   workType: string;
   createdFromPreset?: string;
+  selectedModules: string[];
   source: string;
   requiredFiles: string[];
   files: HarnessTemplateFile[];
@@ -152,6 +153,7 @@ export interface HarnessTemplateSummary {
   description: string;
   workType: string;
   createdFromPreset?: string;
+  selectedModules: string[];
   sourceType: string;
   sourcePath?: string;
   createdAt: string;
@@ -184,6 +186,7 @@ export interface HarnessTemplateDetail {
   description: string;
   workType: string;
   createdFromPreset?: string;
+  selectedModules: string[];
   sourceType: string;
   sourcePath?: string;
   createdAt: string;
@@ -202,6 +205,7 @@ export interface CreateHarnessTemplateInput {
   description: string;
   workType: string;
   presetId?: string;
+  selectedModules: string[];
   optionalFiles: string[];
 }
 
