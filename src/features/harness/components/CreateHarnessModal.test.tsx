@@ -49,6 +49,17 @@ const presets = [
 ];
 
 describe('CreateHarnessModal', () => {
+  it('places template language beside the display name', () => {
+    render(<CreateHarnessModal onClose={vi.fn()} onCreate={vi.fn()} presets={presets} codeModules={codeModules} codeSharedFiles={codeSharedFiles} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Technical Design/i }));
+    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+
+    expect(screen.getByTestId('harness-identity-row')).toContainElement(screen.getByLabelText('模板语言'));
+    expect(screen.getByLabelText('模板语言')).toHaveClass('harness-language-select');
+  });
+
   it('allows multi-selecting Code Work modules and composing files', () => {
     const onCreate = vi.fn();
     render(

@@ -745,6 +745,46 @@ body:has(.harness-editor-container) {
   transition: border-color 0.2s;
 }
 
+.harness-identity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10rem;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.harness-form-group--language {
+  min-width: 0;
+}
+
+.harness-language-select {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 2.1rem 0 0.8rem;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.harness-language-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+@media (max-width: 34rem) {
+  .harness-identity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .harness-form-group--language {
+    max-width: none;
+  }
+}
+
 .harness-form-group input:focus,
 .harness-form-group textarea:focus {
   border-color: var(--color-primary);
@@ -949,4 +989,3 @@ body:has(.harness-editor-container) {
   display: inline-flex;
   align-items: center;
 }
-

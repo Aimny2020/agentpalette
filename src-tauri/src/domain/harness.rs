@@ -42,6 +42,8 @@ pub struct HarnessManifest {
     pub version: String,
     pub description: String,
     pub work_type: String,
+    #[serde(default = "default_harness_language")]
+    pub language: String,
     #[serde(default)]
     pub created_from_preset: Option<String>,
     #[serde(default)]
@@ -59,6 +61,7 @@ pub struct HarnessTemplateSummary {
     pub name: String,
     pub description: String,
     pub work_type: String,
+    pub language: String,
     pub created_from_preset: Option<String>,
     #[serde(default)]
     pub selected_modules: Vec<String>,
@@ -99,6 +102,7 @@ pub struct HarnessTemplateDetail {
     pub name: String,
     pub description: String,
     pub work_type: String,
+    pub language: String,
     pub created_from_preset: Option<String>,
     #[serde(default)]
     pub selected_modules: Vec<String>,
@@ -123,6 +127,8 @@ pub struct CreateHarnessTemplateInput {
     pub name: String,
     pub description: String,
     pub work_type: String,
+    #[serde(default = "default_harness_language")]
+    pub language: String,
     pub preset_id: Option<String>,
     #[serde(default)]
     pub selected_modules: Vec<String>,
@@ -146,6 +152,8 @@ pub struct HarnessImportOptions {
     pub name: String,
     pub description: String,
     pub work_type: String,
+    #[serde(default = "default_harness_language")]
+    pub language: String,
     pub preset_id: Option<String>,
 }
 
@@ -155,6 +163,12 @@ pub struct HarnessExtractOptions {
     pub name: String,
     pub description: String,
     pub work_type: String,
+    #[serde(default = "default_harness_language")]
+    pub language: String,
     pub preset_id: Option<String>,
     pub selected_files: Vec<String>,
+}
+
+pub fn default_harness_language() -> String {
+    "en".into()
 }

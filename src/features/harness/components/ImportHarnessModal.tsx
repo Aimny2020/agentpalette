@@ -33,6 +33,7 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
   const [importName, setImportName] = useState('');
   const [importDesc, setImportDesc] = useState('');
   const [importWorkType, setImportWorkType] = useState('code');
+  const [importLanguage, setImportLanguage] = useState<'zh-CN' | 'en'>('zh-CN');
 
   // Extract states
   const [selectedProjectId, setSelectedProjectId] = useState(activeProjectId || '');
@@ -40,6 +41,7 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
   const [extractName, setExtractName] = useState('');
   const [extractDesc, setExtractDesc] = useState('');
   const [extractWorkType, setExtractWorkType] = useState('code');
+  const [extractLanguage, setExtractLanguage] = useState<'zh-CN' | 'en'>('zh-CN');
 
   // Query projects for extraction dropdown
   const { data: projects = [] } = useQuery({
@@ -80,6 +82,7 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
       name: importName.trim(),
       description: importDesc.trim(),
       workType: importWorkType,
+      language: importLanguage,
     });
   };
 
@@ -102,6 +105,7 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
       name: extractName.trim(),
       description: extractDesc.trim(),
       workType: extractWorkType,
+      language: extractLanguage,
       selectedFiles,
     });
   };
@@ -217,6 +221,12 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
                       <option value="custom">Custom (自定义)</option>
                     </select>
                   </div>
+                  <div className="harness-form-group">
+                    <label htmlFor="imp-language">模板语言</label>
+                    <select id="imp-language" value={importLanguage} onChange={(e) => setImportLanguage(e.target.value as 'zh-CN' | 'en')}>
+                      <option value="zh-CN">简体中文</option><option value="en">English</option>
+                    </select>
+                  </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-1)' }}>
                     <button
@@ -305,6 +315,12 @@ export function ImportHarnessModal({ onClose, onImportFolder, onExtractProject }
                   <option value="document">Document Work (报告论文)</option>
                   <option value="presentation">Presentation Work (演示)</option>
                   <option value="custom">Custom (自定义)</option>
+                </select>
+              </div>
+              <div className="harness-form-group">
+                <label htmlFor="ext-language">模板语言</label>
+                <select id="ext-language" value={extractLanguage} onChange={(e) => setExtractLanguage(e.target.value as 'zh-CN' | 'en')}>
+                  <option value="zh-CN">简体中文</option><option value="en">English</option>
                 </select>
               </div>
 

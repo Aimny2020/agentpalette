@@ -55,6 +55,13 @@ pub fn code_work_shared_files() -> Vec<HarnessPresetFile> {
     shared_code_files()
 }
 
+pub fn code_work_shared_files_for_language(language: &str) -> Vec<HarnessPresetFile> {
+    code_work_shared_files()
+        .into_iter()
+        .map(|file| localize_file(file, language))
+        .collect()
+}
+
 pub fn built_in_code_work_modules() -> Vec<CodeWorkModule> {
     vec![
         CodeWorkModule {
@@ -105,8 +112,51 @@ pub fn built_in_code_work_modules() -> Vec<CodeWorkModule> {
     ]
 }
 
+pub fn built_in_code_work_modules_for_language(language: &str) -> Vec<CodeWorkModule> {
+    built_in_code_work_modules()
+        .into_iter()
+        .map(|mut module| {
+            if language == "zh-CN" {
+                let (name, description, instructions) = match module.id.as_str() {
+                    "technical-design" => (
+                        "技术设计",
+                        "在实现前明确架构边界、备选方案、约束和验证条件。",
+                        "先完成架构设计：分析备选方案，明确约束、决策记录与验证计划，再进入实现。",
+                    ),
+                    "feature-development" => (
+                        "功能开发",
+                        "面向长期编码工作的逐功能实现、测试与证据记录。",
+                        "一次只实现一个功能，采用测试驱动方式，并在进入下一项前记录真实验证证据。",
+                    ),
+                    "code-review" => (
+                        "代码审查",
+                        "基于证据审查代码、方案和技术变更。",
+                        "独立审查正确性、架构一致性、范围和验证证据；记录发现项与必要的后续动作。",
+                    ),
+                    _ => ("", "", ""),
+                };
+                module.name = name.into();
+                module.description = description.into();
+                module.agent_instructions = instructions.into();
+            }
+            module.files = module
+                .files
+                .into_iter()
+                .map(|file| localize_file(file, language))
+                .collect();
+            module
+        })
+        .collect()
+}
+
 pub fn find_code_work_module(id: &str) -> Option<CodeWorkModule> {
     built_in_code_work_modules()
+        .into_iter()
+        .find(|module| module.id == id)
+}
+
+pub fn find_code_work_module_for_language(id: &str, language: &str) -> Option<CodeWorkModule> {
+    built_in_code_work_modules_for_language(language)
         .into_iter()
         .find(|module| module.id == id)
 }
@@ -186,10 +236,83 @@ pub fn built_in_harness_presets() -> Vec<HarnessPreset> {
     ]
 }
 
+pub fn built_in_harness_presets_for_language(language: &str) -> Vec<HarnessPreset> {
+    built_in_harness_presets()
+        .into_iter()
+        .map(|mut preset| {
+            if language == "zh-CN" {
+                let (name, description) = match preset.id.as_str() {
+                    "document-professional-report" => {
+                        ("专业报告", "为决策、汇报和长篇专业沟通准备的证据型报告。")
+                    }
+                    "document-academic-paper" => {
+                        ("学术论文", "为长期研究和论文写作提供可追溯证据与引文管理。")
+                    }
+                    "presentation-briefing" => (
+                        "汇报演示",
+                        "面向决策的演示规划，包含叙事、页面、讲稿和证据材料。",
+                    ),
+                    _ => ("", ""),
+                };
+                preset.name = name.into();
+                preset.description = description.into();
+            }
+            preset.files = preset
+                .files
+                .into_iter()
+                .map(|file| localize_file(file, language))
+                .collect();
+            preset
+        })
+        .collect()
+}
+
 pub fn find_harness_preset(id: &str) -> Option<HarnessPreset> {
     built_in_harness_presets()
         .into_iter()
         .find(|preset| preset.id == id)
+}
+
+pub fn find_harness_preset_for_language(id: &str, language: &str) -> Option<HarnessPreset> {
+    built_in_harness_presets_for_language(language)
+        .into_iter()
+        .find(|preset| preset.id == id)
+}
+
+fn localize_file(mut file: HarnessPresetFile, language: &str) -> HarnessPresetFile {
+    if language != "zh-CN" {
+        return file;
+    }
+
+    let (label, content) = match file.path.as_str() {
+        "docs/architecture.md" => ("架构边界", "# 架构边界\n\n## 系统概览\n描述系统及其主要边界。\n\n## 分层规则\n- 依赖应遵循既定方向。\n- 决策应记录在所属边界。\n\n## 不变量\n- 记录必须始终成立的规则。\n"),
+        "docs/decision-record.md" => ("技术决策记录", "# 技术决策记录\n\n## 决策\n说明选择的方案。\n\n## 背景\n问题与约束是什么？\n\n## 备选方案\n- 方案：\n  - 收益：\n  - 成本：\n\n## 后果\n- 正面：\n- 负面：\n- 后续动作：\n"),
+        "docs/feature_list.json" => ("机器可读功能列表", "{\n  \"features\": [\n    {\n      \"id\": \"feat-001\",\n      \"name\": \"替换为第一个具体功能\",\n      \"description\": \"定义行为和验收证据\",\n      \"dependencies\": [],\n      \"status\": \"not-started\",\n      \"evidence\": \"\"\n    }\n  ]\n}\n"),
+        "docs/review-rubric.md" => ("基于证据的审查准则", "# 审查准则\n\n| 维度 | 通过条件 | 证据 |\n| --- | --- | --- |\n| 正确性 | 覆盖需求行为 | |\n| 架构 | 边界和不变量成立 | |\n| 验证 | 必要检查通过 | |\n| 范围 | 没有无关改动 | |\n\n## 结论\n- 接受\n- 修改\n- 阻断\n"),
+        "docs/review-findings.md" => ("审查发现", "# 审查发现\n\n## 发现 001\n- 严重程度：高 / 中 / 低\n- 位置：\n- 证据：\n- 影响：\n- 必要后续动作：\n- 状态：待处理 / 已修复 / 已接受\n\n## 审查总结\n- 阻断项：\n- 已运行验证：\n- 最终结论：\n"),
+        "docs/task-status.md" => ("已验证任务状态", "# 任务状态\n\n## 当前已验证状态\n- 仓库状态：\n- 验证状态：\n- 当前工作项：\n- 当前阻塞：\n\n## 会话记录\n\n### 会话 001\n- 目标：\n- 已完成：\n- 验证证据：\n- 风险：\n- 下一步：\n"),
+        "docs/session-handoff.md" => ("会话交接", "# 会话交接\n\n## 当前目标\n- 目标：\n- 当前状态：\n- 当前工作项：\n\n## 已验证证据\n- 检查：\n- 结果：\n\n## 阻塞与风险\n-\n\n## 下次会话\n1. 阅读 `AGENTS.md`。\n2. 阅读当前状态和验证文件。\n3. 只继续当前工作项。\n"),
+        "docs/verification.md" => ("验证与完成证据", "# 验证\n\n## 完成定义\n- 已实现请求行为。\n- 已实际运行必要检查。\n- 已在状态文件中记录证据。\n- 仓库可继续工作。\n\n## 验证命令\n- 完整验证：`[替换为项目命令]`\n\n## 证据\n记录每个已完成项目的命令、结果和关键输出。\n"),
+        "docs/risk-rules.md" => ("风险与范围规则", "# 风险规则\n\n## 范围规则\n- 一次只处理一个工作项。\n- 扩大范围前必须记录原因。\n\n## 高风险操作\n列出需要明确批准的操作。\n\n## 禁止行为\n- 没有验证证据不得声明完成。\n- 不得在脚本中隐藏破坏性行为。\n"),
+        "docs/document-brief.md" => ("文档简报", "# 文档简报\n\n## 受众\n\n## 目的与决策\n\n## 约束\n\n## 交付物\n"),
+        "docs/outline.md" => ("报告大纲", "# 大纲\n\n## 执行结论\n\n## 支撑章节\n\n## 开放问题\n"),
+        "docs/research-notes.md" => ("研究笔记", "# 研究笔记\n\n## 来源 001\n- 来源：\n- 关键观察：\n- 可靠性：\n- 用途：\n"),
+        "docs/evidence-matrix.md" => ("证据矩阵", "# 证据矩阵\n\n| 主张 | 证据 | 来源 | 置信度 | 开放问题 |\n| --- | --- | --- | --- | --- |\n"),
+        "docs/quality-rubric.md" => ("质量准则", "# 质量准则\n\n| 维度 | 标准 | 证据 |\n| --- | --- | --- |\n| 准确性 | 主张有证据支撑 | |\n| 结构 | 读者能够理解论证 | |\n| 完整性 | 回答必要问题 | |\n| 清晰度 | 语言适合受众 | |\n"),
+        "docs/research-question.md" => ("研究问题", "# 研究问题\n\n## 问题\n\n## 范围与排除项\n\n## 贡献\n\n## 方法或证据标准\n"),
+        "docs/paper-outline.md" => ("论文大纲", "# 论文大纲\n\n## 摘要\n\n## 引言\n\n## 相关工作\n\n## 方法\n\n## 结果\n\n## 讨论\n\n## 结论\n"),
+        "docs/literature-review.md" => ("文献综述", "# 文献综述\n\n## 主题\n\n## 共识与分歧\n\n## 缺口\n\n## 待核实来源\n"),
+        "docs/citation-register.md" => ("引文登记表", "# 引文登记表\n\n| 标识 | 完整引文 | 使用位置 | 已核实 |\n| --- | --- | --- | --- |\n"),
+        "docs/presentation-brief.md" => ("演示简报", "# 演示简报\n\n## 受众\n\n## 期望决策或行动\n\n## 时长\n\n## 约束\n"),
+        "docs/narrative-outline.md" => ("叙事大纲", "# 叙事大纲\n\n## 先给结论\n\n## 为什么重要\n\n## 证据与转折点\n\n## 行动号召\n"),
+        "docs/slide-plan.md" => ("页面计划", "# 页面计划\n\n| 页面 | 目的 | 核心信息 | 证据或素材 | 状态 |\n| --- | --- | --- | --- | --- |\n"),
+        "docs/speaker-notes.md" => ("讲稿备注", "# 讲稿备注\n\n## 第 1 页\n- 信息：\n- 讲述要点：\n- 过渡：\n"),
+        "docs/visual-direction.md" => ("视觉方向", "# 视觉方向\n\n## 受众与语气\n\n## 视觉原则\n\n## 品牌约束\n\n## 禁止处理方式\n"),
+        _ => return file,
+    };
+    file.label = label.into();
+    file.content = content.into();
+    file
 }
 
 #[cfg(test)]
@@ -262,5 +385,22 @@ mod tests {
                 .iter()
                 .any(|file| file.path == "docs/session-handoff.md"));
         }
+    }
+
+    #[test]
+    fn chinese_registry_preserves_paths_and_localizes_content() {
+        let english = super::built_in_code_work_modules_for_language("en");
+        let chinese = super::built_in_code_work_modules_for_language("zh-CN");
+
+        assert_eq!(
+            english.iter().map(|module| &module.id).collect::<Vec<_>>(),
+            chinese.iter().map(|module| &module.id).collect::<Vec<_>>()
+        );
+        assert!(chinese.iter().any(|module| module.name == "技术设计"));
+        assert!(chinese
+            .iter()
+            .flat_map(|module| &module.files)
+            .any(|file| file.path == "docs/feature_list.json"
+                && file.content.contains("替换为第一个具体功能")));
     }
 }

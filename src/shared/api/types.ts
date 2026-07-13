@@ -148,6 +148,7 @@ export interface HarnessManifest {
   version: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   createdFromPreset?: string;
   selectedModules: string[];
   source: string;
@@ -160,6 +161,7 @@ export interface HarnessTemplateSummary {
   name: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   createdFromPreset?: string;
   selectedModules: string[];
   sourceType: string;
@@ -193,6 +195,7 @@ export interface HarnessTemplateDetail {
   name: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   createdFromPreset?: string;
   selectedModules: string[];
   sourceType: string;
@@ -212,6 +215,7 @@ export interface CreateHarnessTemplateInput {
   name: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   presetId?: string;
   selectedModules: string[];
   optionalFiles: string[];
@@ -230,6 +234,7 @@ export interface HarnessImportOptions {
   name: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   presetId?: string;
 }
 
@@ -237,6 +242,7 @@ export interface HarnessExtractOptions {
   name: string;
   description: string;
   workType: string;
+  language: 'zh-CN' | 'en';
   presetId?: string;
   selectedFiles: string[];
 }

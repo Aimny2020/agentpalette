@@ -8,7 +8,11 @@ use crate::domain::harness::{
     HarnessImportInspection, HarnessImportOptions, HarnessManifest, HarnessTemplateDetail,
     HarnessTemplateFile, HarnessTemplateSummary, HarnessValidationReport,
 };
-use crate::domain::harness_presets::{built_in_harness_presets, find_harness_preset};
+use crate::domain::harness_presets::{
+    built_in_code_work_modules_for_language, built_in_harness_presets_for_language,
+    code_work_shared_files_for_language, find_code_work_module_for_language,
+    find_harness_preset_for_language,
+};
 use crate::domain::ports::{HarnessRepository, SkillRepository};
 
 pub struct HarnessService {
@@ -103,6 +107,7 @@ impl HarnessService {
                 name,
                 description,
                 work_type,
+                language,
                 created_from_preset,
                 selected_modules,
                 source_type,
@@ -117,6 +122,7 @@ impl HarnessService {
                         name: m.name.clone(),
                         description: m.description.clone(),
                         work_type: m.work_type.clone(),
+                        language: m.language.clone(),
                         created_from_preset: m.created_from_preset.clone(),
                         selected_modules: m.selected_modules.clone(),
                         source_type: m.source.clone(),
@@ -132,6 +138,7 @@ impl HarnessService {
                     m.name.clone(),
                     m.description.clone(),
                     m.work_type.clone(),
+                    m.language.clone(),
                     m.created_from_preset.clone().or(record.created_from_preset),
                     m.selected_modules.clone(),
                     record.source_type,
@@ -147,6 +154,7 @@ impl HarnessService {
                         name: id.clone(),
                         description: "".into(),
                         work_type: "custom".into(),
+                        language: "en".into(),
                         created_from_preset: None,
                         selected_modules: Vec::new(),
                         source_type: "local".into(),
@@ -162,6 +170,7 @@ impl HarnessService {
                     record.name,
                     record.description,
                     record.work_type,
+                    record.language,
                     record.created_from_preset,
                     Vec::new(),
                     record.source_type,
@@ -176,6 +185,7 @@ impl HarnessService {
                 name,
                 description,
                 work_type,
+                language,
                 created_from_preset,
                 selected_modules,
                 source_type,
@@ -205,6 +215,7 @@ impl HarnessService {
         &self,
         input: CreateHarnessTemplateInput,
     ) -> DomainResult<HarnessTemplateDetail> {
+        validate_harness_language(&input.language)?;
         let (selected_files, selected_modules) = self.resolve_creation_files(&input)?;
         let selected_module_ids = selected_modules
             .iter()
@@ -218,9 +229,9 @@ impl HarnessService {
             .map_err(|e| DomainError::Database(e.to_string()))?;
 
         let agents_content = if input.work_type == "code" {
-            self.generate_code_agents_content(&selected_modules, &selected_files)
+            self.generate_code_agents_content(&input.language, &selected_modules, &selected_files)
         } else {
-            self.generate_agents_content(&input.work_type, &selected_files)
+            self.generate_agents_content(&input.language, &input.work_type, &selected_files)
         };
         fs::write(template_dir.join("AGENTS.md"), agents_content)
             .map_err(|e| DomainError::Database(e.to_string()))?;
@@ -231,6 +242,7 @@ impl HarnessService {
             version: "1.0.0".into(),
             description: input.description.clone(),
             work_type: input.work_type.clone(),
+            language: input.language.clone(),
             created_from_preset: if input.work_type == "code" {
                 None
             } else {
@@ -275,6 +287,7 @@ impl HarnessService {
             name: input.name.clone(),
             description: input.description.clone(),
             work_type: input.work_type.clone(),
+            language: input.language.clone(),
             created_from_preset: if input.work_type == "code" {
                 None
             } else {
@@ -300,15 +313,15 @@ impl HarnessService {
     }
 
     pub fn get_harness_presets(&self) -> Vec<crate::domain::harness::HarnessPreset> {
-        built_in_harness_presets()
+        built_in_harness_presets_for_language("en")
     }
 
     pub fn get_code_work_modules(&self) -> Vec<crate::domain::harness::CodeWorkModule> {
-        crate::domain::harness_presets::built_in_code_work_modules()
+        built_in_code_work_modules_for_language("en")
     }
 
     pub fn get_code_work_shared_files(&self) -> Vec<crate::domain::harness::HarnessPresetFile> {
-        crate::domain::harness_presets::code_work_shared_files()
+        code_work_shared_files_for_language("en")
     }
 
     fn resolve_creation_files(
@@ -320,9 +333,12 @@ impl HarnessService {
     )> {
         match input.work_type.as_str() {
             "code" => {
-                let modules =
-                    self.resolve_code_modules(&input.selected_modules, input.preset_id.as_deref())?;
-                let mut offered_files = crate::domain::harness_presets::code_work_shared_files();
+                let modules = self.resolve_code_modules(
+                    &input.selected_modules,
+                    input.preset_id.as_deref(),
+                    &input.language,
+                )?;
+                let mut offered_files = code_work_shared_files_for_language(&input.language);
                 for module in &modules {
                     offered_files.extend(module.files.clone());
                 }
@@ -342,6 +358,7 @@ impl HarnessService {
                     &input.work_type,
                     input.preset_id.as_deref(),
                     &input.selected_modules,
+                    &input.language,
                 )?;
                 let selected_files =
                     self.select_preset_files(&input.optional_files, &preset.files)?;
@@ -349,7 +366,7 @@ impl HarnessService {
             }
             "custom" => {
                 self.resolve_custom_files(input.preset_id.as_deref(), &input.selected_modules)?;
-                let available_files = self.custom_standard_files();
+                let available_files = self.custom_standard_files(&input.language);
                 let selected_files =
                     self.select_preset_files(&input.optional_files, &available_files)?;
                 Ok((selected_files, Vec::new()))
@@ -364,6 +381,7 @@ impl HarnessService {
         &self,
         selected_modules: &[String],
         preset_id: Option<&str>,
+        language: &str,
     ) -> DomainResult<Vec<crate::domain::harness::CodeWorkModule>> {
         if selected_modules.is_empty() {
             return Err(DomainError::Database(
@@ -384,11 +402,11 @@ impl HarnessService {
                     id
                 )));
             }
-            crate::domain::harness_presets::find_code_work_module(id)
+            find_code_work_module_for_language(id, language)
                 .ok_or_else(|| DomainError::Database(format!("Unknown module ID '{}'", id)))?;
         }
 
-        Ok(crate::domain::harness_presets::built_in_code_work_modules()
+        Ok(built_in_code_work_modules_for_language(language)
             .into_iter()
             .filter(|module| seen.contains(&module.id))
             .collect())
@@ -399,6 +417,7 @@ impl HarnessService {
         work_type: &str,
         preset_id: Option<&str>,
         selected_modules: &[String],
+        language: &str,
     ) -> DomainResult<crate::domain::harness::HarnessPreset> {
         if !selected_modules.is_empty() {
             return Err(DomainError::Database(format!(
@@ -409,7 +428,7 @@ impl HarnessService {
         let preset_id = preset_id.ok_or_else(|| {
             DomainError::Database("A built-in preset is required for this work type".into())
         })?;
-        let preset = find_harness_preset(preset_id).ok_or_else(|| {
+        let preset = find_harness_preset_for_language(preset_id, language).ok_or_else(|| {
             DomainError::Database(format!("Unknown Harness preset '{preset_id}'"))
         })?;
         if preset.work_type != work_type {
@@ -465,18 +484,21 @@ impl HarnessService {
         Ok(selected)
     }
 
-    fn custom_standard_files(&self) -> Vec<crate::domain::harness::HarnessPresetFile> {
+    fn custom_standard_files(
+        &self,
+        language: &str,
+    ) -> Vec<crate::domain::harness::HarnessPresetFile> {
         let mut files = std::collections::BTreeMap::new();
 
-        for preset in built_in_harness_presets() {
+        for preset in built_in_harness_presets_for_language(language) {
             for file in preset.files {
                 files.insert(file.path.clone(), file);
             }
         }
-        for file in crate::domain::harness_presets::code_work_shared_files() {
+        for file in code_work_shared_files_for_language(language) {
             files.insert(file.path.clone(), file);
         }
-        for module in crate::domain::harness_presets::built_in_code_work_modules() {
+        for module in built_in_code_work_modules_for_language(language) {
             for file in module.files {
                 files.insert(file.path.clone(), file);
             }
@@ -487,9 +509,23 @@ impl HarnessService {
 
     fn generate_agents_content(
         &self,
+        language: &str,
         work_type: &str,
         files: &[crate::domain::harness::HarnessPresetFile],
     ) -> String {
+        if language == "zh-CN" {
+            let mut content = format!(
+                "# Agent 工作区指令\n\n这是一个用于长期、基于证据工作的 {work_type} Harness。\n\n## 启动流程\n\n1. 完整阅读本文件。\n2. 阅读下方列出的已选状态、范围和验证文件。\n3. 在开始前确认当前已验证状态。\n4. 一次只处理一个工作项。\n\n## 工作规则\n\n- 变更必须限定在当前工作项内。\n- 没有验证证据不得声明完成。\n- 在已选状态文件中记录决策、阻塞和下一步。\n\n## 已选 Harness 文件\n\n"
+            );
+            for file in files {
+                content.push_str(&format!(
+                    "- **{}**: [{}]({})\n",
+                    file.label, file.path, file.path
+                ));
+            }
+            content.push_str("\n## 完成定义\n\n只有已选验证和质量标准通过且已记录证据，工作才算完成。\n\n## 会话结束\n\n更新已选状态文件，记录未解决风险，并明确下一步。\n");
+            return content;
+        }
         let mut content = format!(
             "# Agent Workspace Instructions\n\nThis is a {work_type} Harness for long-running, evidence-based work.\n\n## Startup Workflow\n\n1. Read this file completely.\n2. Read the selected status, scope, and verification files listed below.\n3. Confirm the current verified state before starting work.\n4. Work on one active item at a time.\n\n## Work Rules\n\n- Keep changes within the active work item.\n- Do not claim completion without verification evidence.\n- Record decisions, blockers, and next steps in the selected state files.\n\n## Selected Harness Files\n\n"
         );
@@ -507,6 +543,7 @@ impl HarnessService {
 
     fn generate_code_agents_content(
         &self,
+        language: &str,
         selected_modules: &[crate::domain::harness::CodeWorkModule],
         selected_files: &[crate::domain::harness::HarnessPresetFile],
     ) -> String {
@@ -642,6 +679,36 @@ impl HarnessService {
         }
         content.push_str("Record unresolved risks and leave the next step explicit in the selected state files.\n");
 
+        if language == "zh-CN" {
+            return content
+                .replace("# Agent Workspace Instructions", "# Agent 工作区指令")
+                .replace("## Shared Core Rules", "## 共享核心规则")
+                .replace("## Task Classification", "## 任务分类")
+                .replace("## Multi-Module Order", "## 多模块执行顺序")
+                .replace("## Selected Harness Files", "## 已选 Harness 文件")
+                .replace("## Definition of Done", "## 完成定义")
+                .replace("## End Of Session", "## 会话结束")
+                .replace("## Technical Design Role", "## 技术设计角色")
+                .replace("## Feature Development Role", "## 功能开发角色")
+                .replace("## Code Review Role", "## 代码审查角色")
+                .replace("- Startup: Read this file completely.", "- 启动：完整阅读本文件。")
+                .replace("- Read the selected status, scope, and verification files listed below.", "- 阅读下方列出的已选状态、范围和验证文件。")
+                .replace("- Scope Discipline: Work on one active item at a time.", "- 范围纪律：一次只处理一个工作项。")
+                .replace("- State Updates: Record decisions, blockers, and next steps in the selected state files.", "- 状态更新：在已选状态文件中记录决策、阻塞和下一步。")
+                .replace("- Verification Evidence: Do not claim completion without verification evidence.", "- 验证证据：没有验证证据不得声明完成。")
+                .replace("- Session Handoff: Update the selected handoff file before ending a session.", "- 会话交接：在结束会话前更新已选交接文件。")
+                .replace("Use these signals to determine which selected module rules apply:", "使用下列信号判断应应用哪些已选模块规则：")
+                .replace("- Architecture, boundaries, alternatives, or design decisions: Technical Design Role.", "- 架构、边界、备选方案或设计决策：应用技术设计角色。")
+                .replace("- Implementation, bug fixes, refactors, or tests: Feature Development Role.", "- 实现、缺陷修复、重构或测试：应用功能开发角色。")
+                .replace("- Review, acceptance, quality inspection, or verification of a change: Code Review Role.", "- 审查、验收、质量检查或变更验证：应用代码审查角色。")
+                .replace("Use the selected module files:", "使用已选模块文件：")
+                .replace("Single module execution.", "执行单个已选模块。")
+                .replace("Failed review returns work to Feature Development before re-review.", "审查未通过时，先回到功能开发完成修复，再次审查。")
+                .replace("The work is complete only when the selected verification and quality criteria pass and the evidence is recorded.", "只有已选验证和质量标准通过且已记录证据，工作才算完成。")
+                .replace("Update [docs/task-status.md](docs/task-status.md) with the verified state.", "更新 [docs/task-status.md](docs/task-status.md) 以记录已验证状态。")
+                .replace("Update [docs/session-handoff.md](docs/session-handoff.md) with the next step.", "更新 [docs/session-handoff.md](docs/session-handoff.md) 以记录下一步。")
+                .replace("Record unresolved risks and leave the next step explicit in the selected state files.", "记录未解决风险，并在已选状态文件中明确下一步。");
+        }
         content
     }
 
@@ -696,6 +763,10 @@ impl HarnessService {
             name: summary.name,
             description: summary.description,
             work_type: summary.work_type,
+            language: manifest
+                .as_ref()
+                .map(|m| m.language.clone())
+                .unwrap_or_else(|| "en".into()),
             created_from_preset: summary.created_from_preset,
             selected_modules: manifest
                 .as_ref()
@@ -783,6 +854,26 @@ impl HarnessService {
         content: &str,
     ) -> DomainResult<HarnessFile> {
         let target_path = self.safe_join(template_id, path)?;
+        if path == "docs/harness.toml" && target_path.exists() {
+            let current: HarnessManifest = toml::from_str(
+                &fs::read_to_string(&target_path)
+                    .map_err(|e| DomainError::Database(e.to_string()))?,
+            )
+            .map_err(|e| {
+                DomainError::Database(format!("Invalid existing Harness manifest: {e}"))
+            })?;
+            let proposed: HarnessManifest = toml::from_str(content)
+                .map_err(|e| DomainError::Database(format!("Invalid Harness manifest: {e}")))?;
+            if current.language != proposed.language
+                || current.work_type != proposed.work_type
+                || current.created_from_preset != proposed.created_from_preset
+                || current.selected_modules != proposed.selected_modules
+            {
+                return Err(DomainError::Database(
+                    "Harness language, work type, preset provenance, and selected modules are immutable".into(),
+                ));
+            }
+        }
         let parent = target_path.parent().unwrap();
         if !parent.exists() {
             fs::create_dir_all(parent).map_err(|e| DomainError::Database(e.to_string()))?;
@@ -956,6 +1047,7 @@ impl HarnessService {
 
         // Update new docs/harness.toml manifest
         let mut manifest_modules = Vec::new();
+        let mut manifest_language = "en".to_string();
         let manifest_path = dst.join("docs").join("harness.toml");
         if manifest_path.exists() {
             if let Ok(toml_content) = fs::read_to_string(&manifest_path) {
@@ -963,6 +1055,7 @@ impl HarnessService {
                     manifest.id = target_id.clone();
                     manifest.name = target_name.to_string();
                     manifest_modules = manifest.selected_modules.clone();
+                    manifest_language = manifest.language.clone();
                     if let Ok(updated_toml) = toml::to_string(&manifest) {
                         let _ = fs::write(&manifest_path, updated_toml);
                     }
@@ -972,17 +1065,25 @@ impl HarnessService {
 
         let db_records = self.repo.get_harnesses()?;
         let now = chrono::Utc::now().to_rfc3339();
-        let (description, work_type, created_from_preset, db_modules, source_type) =
+        let (description, work_type, language, created_from_preset, db_modules, source_type) =
             if let Some(old) = db_records.into_iter().find(|r| r.id == template_id) {
                 (
                     old.description,
                     old.work_type,
+                    old.language,
                     old.created_from_preset,
                     old.selected_modules,
                     old.source_type,
                 )
             } else {
-                ("".into(), "custom".into(), None, Vec::new(), "local".into())
+                (
+                    "".into(),
+                    "custom".into(),
+                    "en".into(),
+                    None,
+                    Vec::new(),
+                    "local".into(),
+                )
             };
 
         let selected_modules = if manifest_path.exists() {
@@ -996,6 +1097,11 @@ impl HarnessService {
             name: target_name.to_string(),
             description,
             work_type,
+            language: if manifest_path.exists() {
+                manifest_language
+            } else {
+                language
+            },
             created_from_preset,
             selected_modules,
             source_type,
@@ -1184,7 +1290,16 @@ impl HarnessService {
                         }
 
                         if let Some(ref content) = agents_content {
-                            let role_heading = format!("## {} Role", module.name);
+                            let role_heading = if m.language == "zh-CN" {
+                                match module.id.as_str() {
+                                    "technical-design" => "## 技术设计角色".to_string(),
+                                    "feature-development" => "## 功能开发角色".to_string(),
+                                    "code-review" => "## 代码审查角色".to_string(),
+                                    _ => String::new(),
+                                }
+                            } else {
+                                format!("## {} Role", module.name)
+                            };
                             if !content.contains(&role_heading) {
                                 warnings.push(format!(
                                     "AGENTS.md does not contain role heading '{}' for module '{}'",
@@ -1294,6 +1409,7 @@ impl HarnessService {
         source_path: &str,
         options: HarnessImportOptions,
     ) -> DomainResult<HarnessTemplateDetail> {
+        validate_harness_language(&options.language)?;
         let src = Path::new(source_path);
         if !src.exists() || !src.is_dir() {
             return Err(DomainError::Database(
@@ -1358,6 +1474,7 @@ impl HarnessService {
         manifest.name = options.name.clone();
         manifest.description = options.description.clone();
         manifest.work_type = options.work_type.clone();
+        manifest.language = options.language.clone();
 
         let parent = manifest_path.parent().unwrap();
         if !parent.exists() {
@@ -1375,6 +1492,7 @@ impl HarnessService {
             name: options.name,
             description: options.description,
             work_type: options.work_type,
+            language: manifest.language.clone(),
             created_from_preset: None,
             selected_modules: manifest.selected_modules.clone(),
             source_type: "local".into(),
@@ -1425,6 +1543,7 @@ impl HarnessService {
             version: "1.0.0".into(),
             description: description.to_string(),
             work_type: work_type.to_string(),
+            language: "en".into(),
             created_from_preset: None,
             selected_modules: Vec::new(),
             source: "local".into(),
@@ -1460,6 +1579,7 @@ impl HarnessService {
         project_id: &str,
         options: HarnessExtractOptions,
     ) -> DomainResult<HarnessTemplateDetail> {
+        validate_harness_language(&options.language)?;
         let project_path_str =
             self.project_repo
                 .get_project_path(project_id)?
@@ -1536,6 +1656,7 @@ impl HarnessService {
             version: "1.0.0".into(),
             description: options.description.clone(),
             work_type: options.work_type.clone(),
+            language: options.language.clone(),
             created_from_preset: None,
             selected_modules: Vec::new(),
             source: "local".into(),
@@ -1560,6 +1681,7 @@ impl HarnessService {
             name: options.name,
             description: options.description,
             work_type: options.work_type,
+            language: options.language,
             created_from_preset: None,
             selected_modules: Vec::new(),
             source_type: "project".into(),
@@ -1596,6 +1718,16 @@ fn count_files_recursive(dir: &Path) -> std::io::Result<usize> {
         }
     }
     Ok(count)
+}
+
+fn validate_harness_language(language: &str) -> DomainResult<()> {
+    match language {
+        "zh-CN" | "en" => Ok(()),
+        _ => Err(DomainError::Database(format!(
+            "Unsupported Harness language '{}'",
+            language
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -1775,6 +1907,7 @@ mod tests {
             name: "My Template".into(),
             description: "A description".into(),
             work_type: "code".into(),
+            language: "en".into(),
             preset_id: None,
             selected_modules: vec!["technical-design".into(), "feature-development".into()],
             optional_files: vec![
@@ -1827,6 +1960,7 @@ mod tests {
                 name: "Invalid".into(),
                 description: "".into(),
                 work_type: "presentation".into(),
+                language: "en".into(),
                 preset_id: Some("document-academic-paper".into()),
                 selected_modules: vec![],
                 optional_files: vec![],
@@ -1850,6 +1984,7 @@ mod tests {
                 name: "Invalid Custom".into(),
                 description: "".into(),
                 work_type: "custom".into(),
+                language: "en".into(),
                 preset_id: Some("document-academic-paper".into()),
                 selected_modules: vec![],
                 optional_files: vec![],
@@ -1872,6 +2007,7 @@ mod tests {
             name: "T1".into(),
             description: "".into(),
             work_type: "custom".into(),
+            language: "en".into(),
             preset_id: None,
             selected_modules: vec![],
             optional_files: vec![],
@@ -1932,6 +2068,7 @@ mod tests {
                 name: "Full delivery".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 selected_modules: vec![
                     "technical-design".into(),
                     "feature-development".into(),
@@ -1978,6 +2115,7 @@ mod tests {
                 name: "Full delivery".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 selected_modules: vec![
                     "technical-design".into(),
                     "feature-development".into(),
@@ -2014,6 +2152,7 @@ mod tests {
                 name: "Custom code artifacts".into(),
                 description: "".into(),
                 work_type: "custom".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec![],
                 optional_files: vec![
@@ -2047,6 +2186,7 @@ mod tests {
                 name: "Develop then review".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec!["code-review".into(), "feature-development".into()],
                 optional_files: vec![
@@ -2081,6 +2221,7 @@ mod tests {
                 name: "Minimal development".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec!["feature-development".into()],
                 optional_files: vec!["docs/feature_list.json".into()],
@@ -2111,6 +2252,7 @@ mod tests {
                 name: "Empty modules".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec![],
                 optional_files: vec![],
@@ -2139,6 +2281,7 @@ mod tests {
                 name: "Dup modules".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec!["technical-design".into(), "technical-design".into()],
                 optional_files: vec![],
@@ -2165,6 +2308,7 @@ mod tests {
                 name: "Unknown module".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: None,
                 selected_modules: vec!["nonexistent".into()],
                 optional_files: vec![],
@@ -2191,6 +2335,7 @@ mod tests {
                 name: "Preset with code".into(),
                 description: "".into(),
                 work_type: "code".into(),
+                language: "en".into(),
                 preset_id: Some("document-academic-paper".into()),
                 selected_modules: vec!["technical-design".into()],
                 optional_files: vec![],
@@ -2219,6 +2364,7 @@ mod tests {
                 name: "Doc with modules".into(),
                 description: "".into(),
                 work_type: "document".into(),
+                language: "en".into(),
                 preset_id: Some("document-academic-paper".into()),
                 selected_modules: vec!["technical-design".into()],
                 optional_files: vec![],
@@ -2270,6 +2416,7 @@ files = []
             name: "Legacy Imported Template".into(),
             description: "A legacy imported description".into(),
             work_type: "code".into(),
+            language: "en".into(),
             preset_id: None,
         };
 
@@ -2303,6 +2450,7 @@ files = []
             name: "Composed Code Template".into(),
             description: "Test description".into(),
             work_type: "code".into(),
+            language: "en".into(),
             preset_id: None,
             selected_modules: vec!["code-review".into()],
             optional_files: vec![
@@ -2363,5 +2511,47 @@ files = []
             "Expected warning about missing reference to 'docs/review-rubric.md', got: {:?}",
             report2.warnings
         );
+    }
+
+    #[test]
+    fn creates_chinese_code_harness_and_locks_manifest_language() {
+        let fixture = TempFixture::new();
+        let repo = Arc::new(MockHarnessRepo {
+            items: Mutex::new(Vec::new()),
+        });
+        let service =
+            HarnessService::with_harnesses_dir(repo, Arc::new(MockSkillRepo), fixture.0.clone());
+        let detail = service
+            .create_harness_template(CreateHarnessTemplateInput {
+                name: "中文开发规范".into(),
+                description: "".into(),
+                work_type: "code".into(),
+                language: "zh-CN".into(),
+                preset_id: None,
+                selected_modules: vec!["feature-development".into()],
+                optional_files: vec!["docs/feature_list.json".into()],
+            })
+            .unwrap();
+        let agents = service
+            .read_harness_file(&detail.id, "AGENTS.md")
+            .unwrap()
+            .content;
+        assert_eq!(detail.language, "zh-CN");
+        assert!(agents.contains("## 功能开发角色"));
+        assert!(agents.contains("- 启动：完整阅读本文件。"));
+        assert!(agents.contains("## 任务分类"));
+        assert!(agents.contains("使用下列信号判断应应用哪些已选模块规则："));
+        assert!(!agents.contains("- Startup: Read this file completely."));
+        assert!(
+            !agents.contains("Use these signals to determine which selected module rules apply:")
+        );
+
+        let manifest_path = fixture.0.join(&detail.id).join("docs/harness.toml");
+        let changed = fs::read_to_string(&manifest_path)
+            .unwrap()
+            .replace("language = \"zh-CN\"", "language = \"en\"");
+        assert!(service
+            .write_harness_file(&detail.id, "docs/harness.toml", &changed)
+            .is_err());
     }
 }

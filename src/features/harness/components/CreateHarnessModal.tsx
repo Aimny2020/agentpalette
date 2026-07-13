@@ -34,6 +34,7 @@ export function CreateHarnessModal({
 }: CreateHarnessModalProps) {
   const [step, setStep] = useState(1);
   const [workType, setWorkType] = useState<WorkType>('code');
+  const [language, setLanguage] = useState<'zh-CN' | 'en'>('zh-CN');
   const [presetId, setPresetId] = useState<string | undefined>();
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [name, setName] = useState('');
@@ -197,6 +198,7 @@ export function CreateHarnessModal({
       name: name.trim(),
       description: description.trim(),
       workType,
+      language,
       presetId: workType === 'code' ? undefined : presetId,
       selectedModules: workType === 'code' ? selectedModules : [],
       optionalFiles: selectedFiles,
@@ -304,9 +306,18 @@ export function CreateHarnessModal({
           {step === (hasPresetStep ? 3 : 2) && (
             <section className="harness-wizard-panel">
               <p className="harness-wizard-hint">填写模板的显示信息。模板 ID 将由系统自动生成。</p>
-              <div className="harness-form-group">
-                <label htmlFor="harness-name">显示名称</label>
-                <input id="harness-name" placeholder="例如：Web 前端标准开发规范" value={name} onChange={(event) => setName(event.target.value)} />
+              <div className="harness-identity-row" data-testid="harness-identity-row">
+                <div className="harness-form-group">
+                  <label htmlFor="harness-name">显示名称</label>
+                  <input id="harness-name" placeholder="例如：Web 前端标准开发规范" value={name} onChange={(event) => setName(event.target.value)} />
+                </div>
+                <div className="harness-form-group harness-form-group--language">
+                  <label htmlFor="harness-language">模板语言</label>
+                  <select className="harness-language-select" id="harness-language" value={language} onChange={(event) => setLanguage(event.target.value as 'zh-CN' | 'en')}>
+                    <option value="zh-CN">简体中文</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
               </div>
               <div className="harness-form-group">
                 <label htmlFor="harness-desc">描述信息</label>

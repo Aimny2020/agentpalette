@@ -501,6 +501,10 @@ export function GlobalHarnessPage() {
                     <span className="harness-meta__kv-label">工作类型</span>
                     <span className="harness-meta__kv-value">{getWorkTypeLabel(detail.workType)}</span>
                   </div>
+                  <div className="harness-meta__kv-item">
+                    <span className="harness-meta__kv-label">模板语言</span>
+                    <span className="harness-meta__kv-value">{detail.language === 'zh-CN' ? '简体中文' : 'English'}</span>
+                  </div>
                   {detail.workType === 'code' ? (
                     <div className="harness-meta__kv-item" style={{ flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                       <span className="harness-meta__kv-label">启用模块</span>
