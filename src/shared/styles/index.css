@@ -264,6 +264,95 @@ a {
   min-width: 0;
 }
 
+/* Fixed desktop workspace: page chrome stays in place while dense content scrolls inside its own panel. */
+body:has(.fixed-workspace-page) {
+  overflow: hidden;
+}
+
+.app-shell:has(.fixed-workspace-page) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.shell-body:has(.fixed-workspace-page) {
+  height: calc(100vh - 4rem);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.workspace-main:has(.fixed-workspace-page) {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-main:has(.fixed-workspace-page) > .fixed-workspace-page,
+.workspace-main:has(.fixed-workspace-page) > .page-stack:has(.fixed-workspace-page) {
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-main:has(.fixed-workspace-page) > .page-stack:has(.fixed-workspace-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fixed-workspace-page {
+  min-height: 0;
+}
+
+.project-placeholder-page {
+  display: flex;
+}
+
+.project-placeholder-page .page-state {
+  flex: 1;
+}
+
+.project-overview-page {
+  overflow: hidden;
+}
+
+.project-skills-page-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-skills-card {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-skills-card .harness-skills-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.settings-page-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-page-container .page-header {
+  flex: 0 0 auto;
+}
+
+.settings-page-container .settings-grid {
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
 .page-stack {
   display: grid;
   gap: var(--space-3);

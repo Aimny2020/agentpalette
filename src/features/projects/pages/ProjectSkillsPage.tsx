@@ -75,8 +75,8 @@ export function ProjectSkillsPage() {
   };
 
   return (
-    <div className="page-stack">
-      <Card>
+    <div className="page-stack fixed-workspace-page project-skills-page-container">
+      <Card className="project-skills-card">
         <h3>选择启用技能</h3>
         {skills.length === 0 ? (
           <p className="muted-copy" style={{ marginTop: '1rem' }}>

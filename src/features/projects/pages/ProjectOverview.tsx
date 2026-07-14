@@ -16,7 +16,7 @@ export function ProjectOverview() {
   });
 
   return (
-    <div className="content-grid">
+    <div className="content-grid fixed-workspace-page project-overview-page">
       <Card>
         <p className="eyebrow">PROJECT HEALTH</p>
         <h2>工程状态</h2>

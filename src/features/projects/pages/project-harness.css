@@ -25,7 +25,7 @@
 .project-harness-template-copy span { color: var(--color-muted); font-size: .7rem; }
 .project-harness-template-arrow { color: var(--color-muted); }
 .project-harness-empty-copy { color: var(--color-muted); font-size: .8rem; }
-.project-harness-apply-main { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow-y: auto; padding: var(--space-4); }
+.project-harness-apply-main { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; padding: var(--space-4); }
 .project-harness-select-empty { display: grid; max-width: 420px; margin: auto; justify-items: center; text-align: center; }
 .project-harness-empty-mark { display: grid; width: 3.8rem; height: 3.8rem; margin-bottom: var(--space-2); place-items: center; border: 1px solid var(--color-outline); border-radius: 1rem; background: var(--color-surface-soft); color: var(--color-muted); }
 .project-harness-select-empty h3 { margin: 0; font-size: 1.1rem; }
@@ -41,7 +41,7 @@
 .project-harness-panel-heading span { color: var(--color-muted); font-size: .74rem; }
 .project-harness-panel-heading .is-success { display: flex; align-items: center; gap: .25rem; color: var(--color-primary-ink); font-weight: 700; }
 .project-harness-panel-heading .is-danger { color: var(--color-danger); font-weight: 700; }
-.project-harness-preview-files { display: grid; max-height: 260px; overflow: auto; padding: .45rem; }
+.project-harness-preview-files { display: grid; max-height: clamp(7rem, 22vh, 16.25rem); overflow: auto; padding: .45rem; }
 .project-harness-preview-files div { display: flex; align-items: center; gap: .45rem; padding: .47rem .5rem; color: var(--color-muted); }
 .project-harness-preview-files div.is-entry { background: var(--color-surface-strong); color: var(--color-ink); }
 .project-harness-preview-files code, .project-harness-conflict-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; }
@@ -54,13 +54,14 @@
 .project-harness-agents-panel summary { cursor: pointer; color: var(--color-muted); font-size: .75rem; }
 .project-harness-agents-panel pre { max-height: 145px; overflow: auto; margin: .6rem 0 0; white-space: pre-wrap; color: var(--color-ink); font: .7rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .project-harness-conflict-section { margin-top: var(--space-3); border: 1px solid var(--color-outline); border-radius: var(--radius-sm); }
+.project-harness-conflict-list { max-height: clamp(5.75rem, 18vh, 11.25rem); overflow-y: auto; }
 .project-harness-conflict-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: .7rem .8rem; border-top: 1px solid var(--color-outline); }
 .project-harness-conflict-row > div:first-child { display: flex; min-width: 0; align-items: center; gap: .45rem; }
 .project-harness-conflict-row > div:first-child span { color: var(--color-muted); font-size: .72rem; }
 .project-harness-conflict-actions { display: flex; flex: 0 0 auto; gap: .3rem; }
 .project-harness-conflict-actions button { border: 1px solid var(--color-outline); border-radius: .35rem; background: var(--color-surface); color: var(--color-ink); padding: .38rem .5rem; cursor: pointer; font-size: .72rem; }
 .project-harness-conflict-actions button.is-selected { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-primary-ink); font-weight: 700; }
-.project-harness-apply-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: auto; padding-top: var(--space-3); }
+.project-harness-apply-footer { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: auto; padding-top: var(--space-3); }
 .project-harness-apply-footer > div { display: grid; gap: .2rem; }
 .project-harness-apply-footer strong { font-size: .83rem; }
 .project-harness-apply-footer span { color: var(--color-muted); font-size: .74rem; }
