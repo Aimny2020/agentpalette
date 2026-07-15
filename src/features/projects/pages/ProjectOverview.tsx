@@ -22,7 +22,6 @@ export function ProjectOverview() {
   return (
     <div className="content-grid fixed-workspace-page project-overview-page">
       <Card>
-        <p className="eyebrow">FOUNDATION</p>
         <h2>配置摘要</h2>
         <dl className="definition-list">
           <div>
@@ -44,7 +43,6 @@ export function ProjectOverview() {
         </dl>
       </Card>
       <Card className="project-launch-card">
-        <p className="eyebrow">AGENT CONTROL</p>
         <h2>在此项目中启动 Agent</h2>
         {!activeProjectId ? <p className="muted-copy">选择项目后，可直接在该项目目录启动本机 Agent。</p> : agents.isLoading ? <p className="muted-copy">正在检测本机 Agent...</p> : availableAgents.length ? <div className="project-agent-list">
           {availableAgents.map((agent) => <div className="project-agent-row" key={agent.id}>

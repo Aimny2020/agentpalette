@@ -311,7 +311,14 @@ body:has(.fixed-workspace-page) {
 }
 
 .project-overview-page {
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   overflow: hidden;
+}
+
+.project-overview-page > .card {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .project-skills-page-container {
