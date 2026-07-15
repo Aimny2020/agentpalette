@@ -11,8 +11,6 @@ const tabs = [
   { label: '概览', to: '/projects', end: true },
   { label: 'Harness', to: '/projects/harness' },
   { label: 'Skills', to: '/projects/skills' },
-  { label: 'Agents', to: '/projects/agents' },
-  { label: '环境', to: '/projects/environment' },
 ];
 
 export function ProjectsPage() {

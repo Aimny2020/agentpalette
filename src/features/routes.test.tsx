@@ -40,7 +40,6 @@ describe('foundation routes', () => {
     ['/projects', '项目管理'],
     ['/skills', 'Skills 管理'],
     ['/agents', 'Agents 管理'],
-    ['/mcp', 'MCP 管理'],
     ['/tasks', '任务中心'],
     ['/settings', '设置'],
   ])('renders %s as %s', async (path, heading) => {
@@ -65,7 +64,7 @@ describe('foundation routes', () => {
     );
 
     const projectNav = await screen.findByRole('navigation', { name: '项目详情' });
-    for (const tab of ['概览', 'Harness', 'Agents', '环境']) {
+    for (const tab of ['概览', 'Harness', 'Skills']) {
       expect(within(projectNav).getByRole('link', { name: tab })).toBeInTheDocument();
     }
   });
