@@ -57,8 +57,7 @@ impl ManifestAuthor {
 
 pub fn scan_skill_root(id: &str, root: &Path) -> DomainResult<DiscoveredSkill> {
     let mut markdown_paths = Vec::new();
-    let mut has_executable_content = false;
-    walk(root, &mut markdown_paths, &mut has_executable_content)?;
+    walk(root, &mut markdown_paths)?;
     markdown_paths.sort();
     let definition_count = markdown_paths.len();
 
@@ -91,6 +90,14 @@ pub fn scan_skill_root(id: &str, root: &Path) -> DomainResult<DiscoveredSkill> {
             "No valid SKILL.md found in {}",
             root.display()
         )));
+    }
+
+    let mut has_executable_content = false;
+    for skill in &parsed {
+        if directory_has_executable_content(&skill.source_path)? {
+            has_executable_content = true;
+            break;
+        }
     }
 
     let is_pack = definition_count > 1;
@@ -153,11 +160,7 @@ fn member_id(pack_id: &str, relative_directory: &str) -> String {
     }
 }
 
-fn walk(
-    directory: &Path,
-    markdown_paths: &mut Vec<PathBuf>,
-    has_executable_content: &mut bool,
-) -> DomainResult<()> {
+fn walk(directory: &Path, markdown_paths: &mut Vec<PathBuf>) -> DomainResult<()> {
     for entry in
         fs::read_dir(directory).map_err(|error| DomainError::Database(error.to_string()))?
     {
@@ -174,16 +177,10 @@ fn walk(
             if should_ignore_directory(&name) {
                 continue;
             }
-            if name == "hooks" {
-                *has_executable_content = true;
-            }
-            walk(&path, markdown_paths, has_executable_content)?;
+            walk(&path, markdown_paths)?;
         } else if file_type.is_file() {
             if name == "SKILL.md" {
-                markdown_paths.push(path.clone());
-            }
-            if is_executable_candidate(&path) {
-                *has_executable_content = true;
+                markdown_paths.push(path);
             }
         }
     }
@@ -201,6 +198,33 @@ fn is_executable_candidate(path: &Path) -> bool {
         .is_some_and(|extension| {
             EXECUTABLE_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str())
         })
+}
+
+fn directory_has_executable_content(directory: &Path) -> DomainResult<bool> {
+    for entry in
+        fs::read_dir(directory).map_err(|error| DomainError::Database(error.to_string()))?
+    {
+        let entry = entry.map_err(|error| DomainError::Database(error.to_string()))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if file_type.is_dir() {
+            if should_ignore_directory(&name) {
+                continue;
+            }
+            if name == "hooks" || directory_has_executable_content(&path)? {
+                return Ok(true);
+            }
+        } else if file_type.is_file() && is_executable_candidate(&path) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn read_manifest(root: &Path) -> Option<SkillMetadata> {
@@ -322,11 +346,27 @@ mod tests {
     fn detects_executable_content() {
         let fixture = Fixture::new();
         fixture.skill("skills/only", "Only");
-        fs::create_dir_all(fixture.path.join("hooks")).unwrap();
-        fs::write(fixture.path.join("hooks/start.sh"), "#!/bin/sh\n").unwrap();
+        fs::create_dir_all(fixture.path.join("skills/only/hooks")).unwrap();
+        fs::write(
+            fixture.path.join("skills/only/hooks/start.sh"),
+            "#!/bin/sh\n",
+        )
+        .unwrap();
 
         let discovered = scan_skill_root("scripted", &fixture.path).unwrap();
 
         assert!(discovered.has_executable_content);
+    }
+
+    #[test]
+    fn ignores_executable_content_outside_a_nested_standalone_skill() {
+        let fixture = Fixture::new();
+        fixture.skill("skills/only", "Only");
+        fs::create_dir_all(fixture.path.join("examples")).unwrap();
+        fs::write(fixture.path.join("examples/demo.py"), "print('demo')\n").unwrap();
+
+        let discovered = scan_skill_root("clean", &fixture.path).unwrap();
+
+        assert!(!discovered.has_executable_content);
     }
 }
