@@ -1,7 +1,5 @@
 import { NavLink } from 'react-router-dom';
 
-import { ThemeToggle } from '../../shared/theme/ThemeToggle';
-
 const navigation = [
   { label: '项目管理', to: '/projects' },
   { label: 'Agents', to: '/agents' },
@@ -24,7 +22,6 @@ export function TopNavigation() {
           </NavLink>
         ))}
       </nav>
-      <ThemeToggle />
     </header>
   );
 }

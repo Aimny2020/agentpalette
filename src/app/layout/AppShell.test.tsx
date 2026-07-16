@@ -45,6 +45,7 @@ describe('AppShell', () => {
     expect(screen.queryByRole('link', { name: '控制面板' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '任务' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '外观主题' })).not.toBeInTheDocument();
     // Wait for the query to resolve and show the project
     expect(await screen.findByText('Agent-Forge-Core')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '项目管理' })).toHaveAttribute(
