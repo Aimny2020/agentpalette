@@ -803,11 +803,10 @@ impl HarnessService {
             if path.is_dir() {
                 self.list_files_recursive(base_dir, &path, manifest, list)?;
             } else {
-                let rel_path = path
-                    .strip_prefix(base_dir)
-                    .map_err(|e| DomainError::Database(e.to_string()))?
-                    .to_string_lossy()
-                    .into_owned();
+                let rel_path = canonical_relative_path(
+                    path.strip_prefix(base_dir)
+                        .map_err(|e| DomainError::Database(e.to_string()))?,
+                );
 
                 let metadata =
                     fs::metadata(&path).map_err(|e| DomainError::Database(e.to_string()))?;
@@ -1393,11 +1392,10 @@ impl HarnessService {
             if path.is_dir() {
                 self.collect_harness_files(base_dir, &path, list)?;
             } else {
-                let rel_path = path
-                    .strip_prefix(base_dir)
-                    .map_err(|e| DomainError::Database(e.to_string()))?
-                    .to_string_lossy()
-                    .into_owned();
+                let rel_path = canonical_relative_path(
+                    path.strip_prefix(base_dir)
+                        .map_err(|e| DomainError::Database(e.to_string()))?,
+                );
                 list.push(rel_path);
             }
         }
@@ -1697,6 +1695,10 @@ impl HarnessService {
 
         self.get_harness_template(&id)
     }
+}
+
+fn canonical_relative_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn count_files_recursive(dir: &Path) -> std::io::Result<usize> {
@@ -2038,6 +2040,14 @@ mod tests {
         assert!(service
             .read_harness_file(&template_id, "docs/new-file.md")
             .is_err());
+    }
+
+    #[test]
+    fn canonical_relative_paths_always_use_forward_slashes() {
+        assert_eq!(
+            canonical_relative_path(Path::new(r"docs\feature_list.json")),
+            "docs/feature_list.json"
+        );
     }
 
     fn all_selected_code_paths() -> Vec<String> {
