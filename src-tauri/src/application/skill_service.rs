@@ -826,7 +826,7 @@ impl SkillService {
                     });
                 }
 
-                let (mut record, dirty) = self.current_package_record(&skill_id, &path, false)?;
+                let (mut record, dirty) = self.current_package_record(&skill_id, &path, true)?;
                 if record.source_kind == SourceKind::Git {
                     if let Some(normalized) = record.normalized_source.as_deref() {
                         if let Some(existing) = self.repo.find_skill_by_source(normalized)? {
