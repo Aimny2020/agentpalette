@@ -13,9 +13,10 @@ import type { AgentMaintenanceAction, AgentMaintenancePlan, AgentUpdate, LocalAg
 import { PageState } from '../../shared/ui/PageState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 
-function updateLabel(update: AgentUpdate | undefined, ready: boolean) {
+function updateLabel(update: AgentUpdate | undefined, ready: boolean, isFetching: boolean) {
   if (!ready) return '未安装';
-  if (!update) return '正在检查更新';
+  if (isFetching && !update) return '正在检查更新';
+  if (!update) return '暂时无法确认更新';
   if (update.status === 'current') return '已是最新版本';
   if (update.status === 'available') return `可更新至 v${update.latestVersion}`;
   return '暂时无法确认更新';
@@ -24,12 +25,14 @@ function updateLabel(update: AgentUpdate | undefined, ready: boolean) {
 function AgentTile({
   agent,
   update,
+  isFetching,
   onOpen,
   onMaintain,
   isOpening,
 }: {
   agent: LocalAgent;
   update?: AgentUpdate;
+  isFetching: boolean;
   onOpen: () => void;
   onMaintain: (action: AgentMaintenanceAction) => void;
   isOpening: boolean;
@@ -37,7 +40,7 @@ function AgentTile({
   const ready = agent.status === 'ready';
   const manageable = agent.surface === 'cli';
   const isDesktop = agent.surface === 'desktop';
-  const label = isDesktop ? (ready ? '已发现' : '未发现') : updateLabel(update, ready);
+  const label = isDesktop ? (ready ? '已发现' : '未发现') : updateLabel(update, ready, isFetching);
   const tone = ready ? 'success' : 'neutral';
 
   return (
@@ -112,7 +115,7 @@ export function AgentsPage() {
   const [plan, setPlan] = useState<AgentMaintenancePlan | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const agents = useQuery({ queryKey: ['localAgents'], queryFn: getLocalAgents });
-  const updates = useQuery({ queryKey: ['agentUpdates'], queryFn: checkAgentUpdates, enabled: false, staleTime: 5 * 60 * 1000 });
+  const updates = useQuery({ queryKey: ['agentUpdates'], queryFn: checkAgentUpdates, staleTime: 5 * 60 * 1000 });
   const openMutation = useMutation({ mutationFn: openDesktopAgent, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['localAgents'] }) });
   const applyMutation = useMutation({
     mutationFn: ({ agentId, action }: { agentId: string; action: AgentMaintenanceAction }) => applyAgentMaintenance(agentId, action),
@@ -156,7 +159,7 @@ export function AgentsPage() {
       <div className="agents-tabs" role="tablist" aria-label="Agent 类型"><button type="button" role="tab" aria-selected={surface === 'cli'} className={surface === 'cli' ? 'is-active' : ''} onClick={() => setSurface('cli')}>命令行 CLI <span>{counts.cli}</span></button><button type="button" role="tab" aria-selected={surface === 'desktop'} className={surface === 'desktop' ? 'is-active' : ''} onClick={() => setSurface('desktop')}>桌面客户端 <span>{counts.desktop}</span></button></div>
     </div>
     {updates.isFetching && surface === 'cli' && <p className="agent-auto-check">正在自动检查可维护 CLI 的版本...</p>}
-    <section className="agent-tile-grid" aria-label={surface === 'cli' ? '命令行 CLI' : '桌面客户端'}>{visible.map((agent) => <AgentTile key={agent.id} agent={agent} update={updatesByAgent.get(agent.id)} onOpen={() => openMutation.mutate(agent.id)} onMaintain={(action) => void requestMaintenance(agent.id, action)} isOpening={openMutation.isPending && openMutation.variables === agent.id} />)}</section>
+    <section className="agent-tile-grid" aria-label={surface === 'cli' ? '命令行 CLI' : '桌面客户端'}>{visible.map((agent) => <AgentTile key={agent.id} agent={agent} update={updatesByAgent.get(agent.id)} isFetching={updates.isFetching} onOpen={() => openMutation.mutate(agent.id)} onMaintain={(action) => void requestMaintenance(agent.id, action)} isOpening={openMutation.isPending && openMutation.variables === agent.id} />)}</section>
     {!visible.length && <PageState state="empty" title="没有匹配的 Agent" description="尝试使用不同的搜索词。" />}
     {actionError && !plan && <p className="project-agent-error">{actionError}</p>}
     {openMutation.isError && <p className="project-agent-error">无法打开桌面客户端，请重新检测或检查系统应用权限。</p>}
