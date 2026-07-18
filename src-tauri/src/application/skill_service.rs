@@ -709,12 +709,22 @@ impl SkillService {
         skill_id: &str,
         path: &Path,
     ) -> DomainResult<(SkillPackageRecord, bool)> {
+        let is_git = path.join(".git").exists();
+        let dirty = if is_git {
+            git_worktree_is_dirty(path).unwrap_or(false)
+        } else {
+            false
+        };
+
+        if let Some(mut record) = self.repo.get_skill_package(skill_id)? {
+            if dirty {
+                record.installed_commit = Some(local_revision(path));
+            }
+            return Ok((record, dirty));
+        }
+
         let filesystem_source = git_source(path).unwrap_or_else(SkillSourceInfo::local);
-        let mut record = self
-            .repo
-            .get_skill_package(skill_id)?
-            .unwrap_or_else(|| package_record(skill_id, path, &filesystem_source));
-        let mut dirty = false;
+        let mut record = package_record(skill_id, path, &filesystem_source);
 
         if filesystem_source.kind == SourceKind::Git {
             record.source_kind = SourceKind::Git;
@@ -724,7 +734,6 @@ impl SkillService {
                 .as_deref()
                 .and_then(|url| normalize_git_url(url).ok());
             record.tracked_ref = filesystem_source.tracked_ref.clone();
-            dirty = git_worktree_is_dirty(path).unwrap_or(true);
             record.installed_commit = if dirty {
                 Some(local_revision(path))
             } else {

@@ -57,6 +57,7 @@ export function SkillsPage() {
     queryKey: ['skill-updates'],
     queryFn: checkSkillUpdates,
     staleTime: 5 * 60 * 1000,
+    enabled: false,
   });
   const updateStatus = new Map(skillUpdates.map((update) => [update.skill_id, update.status]));
 

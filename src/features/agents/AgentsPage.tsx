@@ -112,7 +112,7 @@ export function AgentsPage() {
   const [plan, setPlan] = useState<AgentMaintenancePlan | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const agents = useQuery({ queryKey: ['localAgents'], queryFn: getLocalAgents });
-  const updates = useQuery({ queryKey: ['agentUpdates'], queryFn: checkAgentUpdates, enabled: agents.isSuccess, staleTime: 60_000 });
+  const updates = useQuery({ queryKey: ['agentUpdates'], queryFn: checkAgentUpdates, enabled: false, staleTime: 5 * 60 * 1000 });
   const openMutation = useMutation({ mutationFn: openDesktopAgent, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['localAgents'] }) });
   const applyMutation = useMutation({
     mutationFn: ({ agentId, action }: { agentId: string; action: AgentMaintenanceAction }) => applyAgentMaintenance(agentId, action),

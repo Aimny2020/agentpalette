@@ -136,7 +136,7 @@ impl AgentService {
                     .commands
                     .iter()
                     .find_map(|command| find_executable(command));
-                let version = executable.as_deref().and_then(read_version);
+                let _version = executable.as_deref().and_then(read_version);
                 LocalAgent {
                     id: definition.id.into(),
                     product: definition.product.into(),
@@ -148,7 +148,7 @@ impl AgentService {
                     } else {
                         "missing".into()
                     },
-                    version,
+                    version: None,
                     executable_path: executable.map(|path| path.to_string_lossy().to_string()),
                     can_install: can_maintain(definition, "install"),
                     can_update: can_maintain(definition, "update"),
