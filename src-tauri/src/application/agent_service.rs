@@ -6,6 +6,9 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::settings::LaunchPreferences;
 
@@ -346,8 +349,10 @@ fn run_maintenance(
                 "uninstall" => vec!["uninstall".into(), "-g".into(), package.into()],
                 _ => unreachable!(),
             };
-            Command::new(npm)
-                .args(&args)
+            let mut command = Command::new(npm);
+            command.args(&args);
+            hide_console_window(&mut command);
+            command
                 .output()
                 .map_err(|error| DomainError::Operation(format!("无法执行 npm：{error}")))
         }
@@ -359,8 +364,10 @@ fn run_maintenance(
             } else {
                 vec!["uninstall", "--yes"]
             };
-            Command::new(executable)
-                .args(args)
+            let mut command = Command::new(executable);
+            command.args(args);
+            hide_console_window(&mut command);
+            command
                 .output()
                 .map_err(|error| DomainError::Operation(format!("无法执行 Hermes：{error}")))
         }
@@ -370,8 +377,10 @@ fn run_maintenance(
 
 #[cfg(target_os = "windows")]
 fn run_platform_shell(command: &str) -> DomainResult<std::process::Output> {
-    Command::new("powershell")
-        .args(["-NoProfile", "-Command", command])
+    let mut shell = Command::new("powershell");
+    shell.args(["-NoProfile", "-Command", command]);
+    hide_console_window(&mut shell);
+    shell
         .output()
         .map_err(|error| DomainError::Operation(format!("无法执行维护命令：{error}")))
 }
@@ -408,6 +417,7 @@ fn read_npm_latest_version(package: &str) -> Option<String> {
         "--fetch-retries=0",
         "--fetch-timeout=3000",
     ]);
+    hide_console_window(&mut command);
     let output = run_command_with_timeout(&mut command, Duration::from_secs(5))?;
     if !output.status.success() {
         return None;
@@ -587,6 +597,7 @@ fn find_executable(command: &str) -> Option<PathBuf> {
 fn read_version(executable: &Path) -> Option<String> {
     let mut command = Command::new(executable);
     command.arg("--version");
+    hide_console_window(&mut command);
     let output = run_command_with_timeout(&mut command, Duration::from_secs(5))?;
     if !output.status.success() {
         return None;
@@ -616,6 +627,19 @@ fn run_command_with_timeout(command: &mut Command, timeout: Duration) -> Option<
         thread::sleep(Duration::from_millis(25));
     }
 }
+
+/// Prevents background CLI probes from creating a visible `cmd.exe` or PowerShell window.
+///
+/// This is deliberately not applied to `launch_in_terminal`, where a visible terminal is the
+/// requested user-facing behavior.
+#[cfg(target_os = "windows")]
+fn hide_console_window(command: &mut Command) {
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn hide_console_window(_command: &mut Command) {}
 
 #[cfg(target_os = "macos")]
 fn launch_in_terminal(
