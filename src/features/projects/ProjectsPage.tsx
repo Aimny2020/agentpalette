@@ -8,7 +8,7 @@ import { ProjectOverview } from './pages/ProjectOverview';
 import '../skills/components/skills.css';
 
 const tabs = [
-  { label: '概览', to: '/projects', end: true },
+  { label: '主页', to: '/projects', end: true },
   { label: 'Harness', to: '/projects/harness' },
   { label: 'Skills', to: '/projects/skills' },
 ];

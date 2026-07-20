@@ -257,7 +257,7 @@ export function SettingsPage() {
                 </Card>
 
                 <Card className="launch-preferences-card launch-preferences-card--summary">
-                  <div className="settings-card-heading"><MonitorCog size={18} /><div><h2>启动体验</h2><p>此设置会成为项目概览中 Agent 启动操作的全局默认值。</p></div></div>
+                  <div className="settings-card-heading"><MonitorCog size={18} /><div><h2>启动体验</h2><p>此设置会成为项目主页中 Agent 启动操作的全局默认值。</p></div></div>
                   <div className="launch-preference-summary"><span>当前默认</span><strong>{terminalOptions.find((option) => option.value === activeTerminal)?.label}</strong><span>{draft.launchPresentation === 'new_tab' ? '新标签页' : '新窗口'}，{draft.showCommandPreview ? '先预览命令' : '直接启动'}</span></div>
                   <p className="muted-copy"><Copy size={14} /> 项目级覆盖与受管运行会在 Agent Control Center 中提供。</p>
                 </Card>

@@ -64,7 +64,7 @@ describe('foundation routes', () => {
     );
 
     const projectNav = await screen.findByRole('navigation', { name: '项目详情' });
-    for (const tab of ['概览', 'Harness', 'Skills']) {
+    for (const tab of ['主页', 'Harness', 'Skills']) {
       expect(within(projectNav).getByRole('link', { name: tab })).toBeInTheDocument();
     }
   });
