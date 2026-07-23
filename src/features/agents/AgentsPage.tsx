@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppWindow, Download, ExternalLink, RefreshCw, Search, TerminalSquare, Trash2, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import {
   applyAgentMaintenance,
@@ -13,13 +15,8 @@ import type { AgentMaintenanceAction, AgentMaintenancePlan, AgentUpdate, LocalAg
 import { PageState } from '../../shared/ui/PageState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 
-function updateLabel(update: AgentUpdate | undefined, ready: boolean, isFetching: boolean) {
-  if (!ready) return '未安装';
-  if (isFetching && !update) return '正在检查更新';
-  if (!update) return '暂时无法确认更新';
-  if (update.status === 'current') return '已是最新版本';
-  if (update.status === 'available') return `可更新至 v${update.latestVersion}`;
-  return '暂时无法确认更新';
+function updateLabel(t: TFunction, update: AgentUpdate | undefined, ready: boolean, isFetching: boolean) {
+  if (!ready) return t('agents.notInstalled'); if (isFetching && !update) return t('agents.checkingUpdates'); if (!update) return t('agents.updateUnknown'); if (update.status === 'current') return t('agents.current'); if (update.status === 'available') return t('agents.updateAvailable', { version: update.latestVersion }); return t('agents.updateUnknown');
 }
 
 function AgentTile({
@@ -37,10 +34,11 @@ function AgentTile({
   onMaintain: (action: AgentMaintenanceAction) => void;
   isOpening: boolean;
 }) {
+  const { t } = useTranslation();
   const ready = agent.status === 'ready';
   const manageable = agent.surface === 'cli';
   const isDesktop = agent.surface === 'desktop';
-  const label = isDesktop ? (ready ? '已发现' : '未发现') : updateLabel(update, ready, isFetching);
+  const label = isDesktop ? (ready ? t('agents.found') : t('agents.notFound')) : updateLabel(t, update, ready, isFetching);
   const tone = ready ? 'success' : 'neutral';
 
   return (
@@ -49,23 +47,23 @@ function AgentTile({
         <span className="agent-tile__icon">{isDesktop ? <AppWindow size={17} /> : <TerminalSquare size={17} />}</span>
         <div>
           <strong>{agent.displayName}</strong>
-          <span>{isDesktop ? '桌面客户端' : '命令行 CLI'}</span>
+          <span>{isDesktop ? t('agents.desktop') : t('agents.cli')}</span>
         </div>
-        <StatusBadge tone={tone}>{ready ? '已就绪' : '未安装'}</StatusBadge>
+        <StatusBadge tone={tone}>{ready ? t('agents.ready') : t('agents.notInstalled')}</StatusBadge>
       </div>
 
       <div className="agent-tile__details">
-        {ready && <span>版本 <b>v{agent.version || '未知'}</b></span>}
+        {ready && <span>{t('agents.version')} <b>v{agent.version || t('agents.unknown')}</b></span>}
         {!isDesktop && <span className={update?.status === 'available' ? 'agent-tile__update-available' : ''}>{label}</span>}
-        {isDesktop && <span>{ready ? '可直接打开' : '未在本机应用目录中发现'}</span>}
+        {isDesktop && <span>{ready ? t('agents.availableToOpen') : t('agents.notFoundOnDevice')}</span>}
       </div>
 
       <div className="agent-tile__actions">
-        {isDesktop && ready && <button type="button" className="button button--primary" onClick={onOpen} disabled={isOpening}><ExternalLink size={14} /> {isOpening ? '正在打开...' : '打开'}</button>}
-        {manageable && !ready && agent.canInstall && <button type="button" className="button button--primary" onClick={() => onMaintain('install')}><Download size={14} /> 安装</button>}
-        {manageable && ready && agent.canUpdate && update?.status !== 'current' && <button type="button" className="button button--primary" onClick={() => onMaintain('update')}><Download size={14} /> 更新</button>}
-        {manageable && ready && update?.status === 'current' && <span className="agent-tile__current">已最新</span>}
-        {manageable && ready && agent.canUninstall && <button type="button" className="button button--ghost-danger" onClick={() => onMaintain('uninstall')}><Trash2 size={14} /> 卸载</button>}
+        {isDesktop && ready && <button type="button" className="button button--primary" onClick={onOpen} disabled={isOpening}><ExternalLink size={14} /> {isOpening ? t('agents.opening') : t('agents.open')}</button>}
+        {manageable && !ready && agent.canInstall && <button type="button" className="button button--primary" onClick={() => onMaintain('install')}><Download size={14} /> {t('agents.install')}</button>}
+        {manageable && ready && agent.canUpdate && update?.status !== 'current' && <button type="button" className="button button--primary" onClick={() => onMaintain('update')}><Download size={14} /> {t('agents.update')}</button>}
+        {manageable && ready && update?.status === 'current' && <span className="agent-tile__current">{t('agents.latest')}</span>}
+        {manageable && ready && agent.canUninstall && <button type="button" className="button button--ghost-danger" onClick={() => onMaintain('uninstall')}><Trash2 size={14} /> {t('agents.uninstall')}</button>}
       </div>
     </article>
   );

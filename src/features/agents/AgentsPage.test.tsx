@@ -49,7 +49,7 @@ describe('AgentsPage', () => {
     );
 
     expect(await screen.findByText(/v1.0.5/)).toBeInTheDocument();
-    expect(await screen.findByText('已是最新版本')).toBeInTheDocument();
+    expect((await screen.findAllByText('Up to date')).length).toBeGreaterThan(0);
   });
 
   it('shows an unavailable status after a completed update check has no record', async () => {
@@ -63,6 +63,6 @@ describe('AgentsPage', () => {
 
     render(<QueryClientProvider client={queryClient}><AgentsPage /></QueryClientProvider>);
 
-    expect(await screen.findByText('暂时无法确认更新')).toBeInTheDocument();
+    expect(await screen.findByText('Update status unavailable')).toBeInTheDocument();
   });
 });
