@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { CreateHarnessTemplateInput, HarnessPreset, CodeWorkModule, HarnessPresetFile } from '../../../shared/api/types';
 
 interface CreateHarnessModalProps {
@@ -15,12 +16,7 @@ interface CreateHarnessModalProps {
 
 type WorkType = 'code' | 'document' | 'presentation' | 'custom';
 
-const WORK_TYPES: { type: WorkType; name: string; description: string }[] = [
-  { type: 'code', name: 'Code Work', description: '编码、测试、代码审查与技术设计。' },
-  { type: 'document', name: 'Document Work', description: '专业报告、论文与证据型长文写作。' },
-  { type: 'presentation', name: 'Presentation Work', description: '汇报演示、叙事结构与讲稿准备。' },
-  { type: 'custom', name: 'Custom Work', description: '从最小结构开始，自由配置文件。' },
-];
+const WORK_TYPES: WorkType[] = ['code', 'document', 'presentation', 'custom'];
 
 export function CreateHarnessModal({
   onClose,
@@ -32,6 +28,7 @@ export function CreateHarnessModal({
   codeSharedFiles = [],
   isCodeSharedFilesLoading = false,
 }: CreateHarnessModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [workType, setWorkType] = useState<WorkType>('code');
   const [language, setLanguage] = useState<'zh-CN' | 'en'>('zh-CN');
@@ -45,10 +42,10 @@ export function CreateHarnessModal({
 
   const currentStepLabels = useMemo(() => {
     if (hasPresetStep) {
-      return ['工作类型', '用途预设', '基本信息', '文件配置', '结构预览'];
+      return [t('harness.steps.workType'), t('harness.steps.preset'), t('harness.steps.information'), t('harness.steps.files'), t('harness.steps.preview')];
     }
-    return ['工作类型', '基本信息', '文件配置', '结构预览'];
-  }, [hasPresetStep]);
+    return [t('harness.steps.workType'), t('harness.steps.information'), t('harness.steps.files'), t('harness.steps.preview')];
+  }, [hasPresetStep, t]);
 
   const isRegistryLoading = useMemo(() => {
     switch (workType) {
@@ -170,19 +167,19 @@ export function CreateHarnessModal({
     if (hasPresetStep && step === 2) {
       if (workType === 'code') {
         if (selectedModules.length === 0) {
-          alert('请选择至少一个 Code 模块。');
+          alert(t('harness.selectModule'));
           return false;
         }
       } else {
         if (!presetId) {
-          alert('请选择一个用途预设。');
+          alert(t('harness.selectPreset'));
           return false;
         }
       }
     }
     const metadataStep = currentStepLabels.length - 2;
     if (step === metadataStep && !name.trim()) {
-      alert('请输入模板名称。');
+      alert(t('harness.enterName'));
       return false;
     }
     return true;
@@ -212,14 +209,14 @@ export function CreateHarnessModal({
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
       <div className="modal-body" onClick={(event) => event.stopPropagation()} style={{ width: '42rem', maxWidth: '90vw', height: 'auto' }}>
         <div className="modal-header">
-          <h3>新建 Harness 模板</h3>
-          <button type="button" className="close-btn" onClick={onClose} aria-label="关闭">
+          <h3>{t('harness.createTitle')}</h3>
+          <button type="button" className="close-btn" onClick={onClose} aria-label={t('common.close')}>
             <X size={20} />
           </button>
         </div>
 
         <div className="harness-modal-content" style={{ marginTop: 'var(--space-2)' }}>
-          <div className="harness-wizard-steps" aria-label="创建进度">
+          <div className="harness-wizard-steps" aria-label={t('harness.creationProgress')}>
             {currentStepLabels.map((label, index) => (
               <div
                 key={label}
@@ -235,18 +232,18 @@ export function CreateHarnessModal({
 
           {step === 1 && (
             <section className="harness-wizard-panel">
-              <p className="harness-wizard-hint">选择这个模板长期服务的 AI 工作类型。</p>
+              <p className="harness-wizard-hint">{t('harness.chooseWorkType')}</p>
               <div className="harness-type-grid">
                 {WORK_TYPES.map((type) => (
                   <button
                     type="button"
-                    key={type.type}
+                    key={type}
                     className="harness-type-card"
-                    data-selected={workType === type.type}
-                    onClick={() => chooseWorkType(type.type)}
+                    data-selected={workType === type}
+                    onClick={() => chooseWorkType(type)}
                   >
-                    <strong>{type.name}</strong>
-                    <span>{type.description}</span>
+                    <strong>{t(`harness.${type}`)}</strong>
+                    <span>{t(`harness.workDescriptions.${type}`)}</span>
                   </button>
                 ))}
               </div>
@@ -257,9 +254,9 @@ export function CreateHarnessModal({
             <section className="harness-wizard-panel">
               {workType === 'code' ? (
                 <>
-                  <p className="harness-wizard-hint">选择要启用的 Code 模块。模块定义了初始文件和专属指令规范。</p>
+                  <p className="harness-wizard-hint">{t('harness.chooseModules')}</p>
                   {isCodeModulesLoading ? (
-                    <p>正在加载系统模块...</p>
+                    <p>{t('harness.loadingModules')}</p>
                   ) : (
                     <div className="harness-type-grid">
                       {codeModules.map((module) => (
@@ -279,9 +276,9 @@ export function CreateHarnessModal({
                 </>
               ) : (
                 <>
-                  <p className="harness-wizard-hint">选择系统维护的只读用途预设。预设决定初始文件和内容骨架。</p>
+                  <p className="harness-wizard-hint">{t('harness.choosePreset')}</p>
                   {isPresetsLoading ? (
-                    <p>正在加载系统预设...</p>
+                    <p>{t('harness.loadingPresets')}</p>
                   ) : (
                     <div className="harness-type-grid">
                       {availablePresets.map((preset) => (
@@ -305,30 +302,30 @@ export function CreateHarnessModal({
 
           {step === (hasPresetStep ? 3 : 2) && (
             <section className="harness-wizard-panel">
-              <p className="harness-wizard-hint">填写模板的显示信息。模板 ID 将由系统自动生成。</p>
+              <p className="harness-wizard-hint">{t('harness.identityHint')}</p>
               <div className="harness-identity-row" data-testid="harness-identity-row">
                 <div className="harness-form-group">
-                  <label htmlFor="harness-name">显示名称</label>
-                  <input id="harness-name" placeholder="例如：Web 前端标准开发规范" value={name} onChange={(event) => setName(event.target.value)} />
+                  <label htmlFor="harness-name">{t('harness.displayName')}</label>
+                  <input id="harness-name" placeholder={t('harness.namePlaceholder')} value={name} onChange={(event) => setName(event.target.value)} />
                 </div>
                 <div className="harness-form-group harness-form-group--language">
-                  <label htmlFor="harness-language">模板语言</label>
+                  <label htmlFor="harness-language">{t('harness.language')}</label>
                   <select className="harness-language-select" id="harness-language" value={language} onChange={(event) => setLanguage(event.target.value as 'zh-CN' | 'en')}>
-                    <option value="zh-CN">简体中文</option>
+                    <option value="zh-CN">{t('harness.chinese')}</option>
                     <option value="en">English</option>
                   </select>
                 </div>
               </div>
               <div className="harness-form-group">
-                <label htmlFor="harness-desc">描述信息</label>
-                <textarea id="harness-desc" placeholder="该模板的用途与主要约束规则介绍..." value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
+                <label htmlFor="harness-desc">{t('harness.descriptionLabel')}</label>
+                <textarea id="harness-desc" placeholder={t('harness.descriptionPlaceholder')} value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
               </div>
             </section>
           )}
 
           {step === filesStep && (
             <section className="harness-wizard-panel">
-              <p className="harness-wizard-hint">确认要生成的标准文件。预设文件默认全选，创建后仍可自由编辑、增加或删除。</p>
+              <p className="harness-wizard-hint">{t('harness.filesHint')}</p>
               <div className="harness-checklist">
                 {fileOptions.map((file) => {
                   let badgeText = '';
@@ -367,12 +364,12 @@ export function CreateHarnessModal({
 
           {step === previewStep && (
             <section className="harness-wizard-panel">
-              <p className="harness-wizard-hint">检查即将生成的目录结构。</p>
+              <p className="harness-wizard-hint">{t('harness.previewHint')}</p>
               <div className="harness-tree-preview">
-                <div>📁 ~/.agent-forge/harnesses/&lt;system-generated-id&gt;/ <small>(兼容数据目录)</small></div>
-                <div>&nbsp; 📄 AGENTS.md <small>(必填 Agent 入口)</small></div>
+                <div>📁 ~/.agent-forge/harnesses/&lt;system-generated-id&gt;/ <small>({t('harness.compatibleDataDirectory')})</small></div>
+                <div>&nbsp; 📄 AGENTS.md <small>({t('harness.requiredAgentEntry')})</small></div>
                 <div>&nbsp; 📁 docs/</div>
-                <div>&nbsp;&nbsp; 📄 harness.toml <small>(必填系统元数据)</small></div>
+                <div>&nbsp;&nbsp; 📄 harness.toml <small>({t('harness.requiredMetadata')})</small></div>
                 {Array.from(new Set(selectedFiles)).map((file) => (
                   <div key={file}>&nbsp;&nbsp; 📄 {file.replace(/^docs\//, '')}</div>
                 ))}
@@ -381,11 +378,11 @@ export function CreateHarnessModal({
           )}
 
           <div className="harness-wizard-footer">
-            {step > 1 && <button type="button" className="button button--secondary" onClick={() => setStep((current) => current - 1)}><ArrowLeft size={16} /> 上一步</button>}
+            {step > 1 && <button type="button" className="button button--secondary" onClick={() => setStep((current) => current - 1)}><ArrowLeft size={16} /> {t('harness.previous')}</button>}
             {step < previewStep ? (
-              <button type="button" className="button button--primary" onClick={handleNext}>下一步 <ArrowRight size={16} /></button>
+              <button type="button" className="button button--primary" onClick={handleNext}>{t('harness.next')} <ArrowRight size={16} /></button>
             ) : (
-              <button type="button" className="button button--primary" onClick={handleSubmit} disabled={!name.trim() || isRegistryLoading}>确认创建</button>
+              <button type="button" className="button button--primary" onClick={handleSubmit} disabled={!name.trim() || isRegistryLoading}>{t('harness.confirmCreate')}</button>
             )}
           </div>
         </div>

@@ -52,12 +52,12 @@ describe('CreateHarnessModal', () => {
   it('places template language beside the display name', () => {
     render(<CreateHarnessModal onClose={vi.fn()} onCreate={vi.fn()} presets={presets} codeModules={codeModules} codeSharedFiles={codeSharedFiles} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
     fireEvent.click(screen.getByRole('button', { name: /Technical Design/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
-    expect(screen.getByTestId('harness-identity-row')).toContainElement(screen.getByLabelText('模板语言'));
-    expect(screen.getByLabelText('模板语言')).toHaveClass('harness-language-select');
+    expect(screen.getByTestId('harness-identity-row')).toContainElement(screen.getByLabelText('Template language'));
+    expect(screen.getByLabelText('Template language')).toHaveClass('harness-language-select');
   });
 
   it('allows multi-selecting Code Work modules and composing files', () => {
@@ -74,22 +74,22 @@ describe('CreateHarnessModal', () => {
 
     // Step 1: Select Code Work and click Next
     fireEvent.click(screen.getByRole('button', { name: /Code Work/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Step 2: Code Work module selection. Select Technical Design and Code Review
     fireEvent.click(screen.getByRole('button', { name: /Technical Design/i }));
     fireEvent.click(screen.getByRole('button', { name: /Code Review/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Step 3: Enter name
-    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Code Harness' } });
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Code Harness' } });
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Step 4: Files selection
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Step 5: Confirm Creation
-    fireEvent.click(screen.getByRole('button', { name: /确认创建/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Create template/i }));
 
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
       workType: 'code',
@@ -118,7 +118,7 @@ describe('CreateHarnessModal', () => {
 
     // Step 1: Select Code Work and click Next
     fireEvent.click(screen.getByRole('button', { name: /Code Work/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Step 2: Toggle module on and off
     const tdButton = screen.getByRole('button', { name: /Technical Design/i });
@@ -126,8 +126,8 @@ describe('CreateHarnessModal', () => {
     fireEvent.click(tdButton); // Off
 
     // Try to advance
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
-    expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('请选择至少一个 Code 模块'));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('Select at least one Code module'));
 
     alertMock.mockRestore();
   });
@@ -145,9 +145,9 @@ describe('CreateHarnessModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Custom Work/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
-    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Custom Harness' } });
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Custom Harness' } });
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     expect(screen.getByText('Decision Record')).toBeInTheDocument();
     expect(screen.getByText('Feature List')).toBeInTheDocument();
@@ -168,21 +168,21 @@ describe('CreateHarnessModal', () => {
     );
 
     // Default workType is 'code', hasPresetStep is true
-    expect(screen.getByTitle('工作类型')).toBeInTheDocument();
-    expect(screen.getByTitle('用途预设')).toBeInTheDocument();
-    expect(screen.getByTitle('基本信息')).toBeInTheDocument();
-    expect(screen.getByTitle('文件配置')).toBeInTheDocument();
-    expect(screen.getByTitle('结构预览')).toBeInTheDocument();
+    expect(screen.getByTitle('Work type')).toBeInTheDocument();
+    expect(screen.getByTitle('Preset')).toBeInTheDocument();
+    expect(screen.getByTitle('Basic information')).toBeInTheDocument();
+    expect(screen.getByTitle('Files')).toBeInTheDocument();
+    expect(screen.getByTitle('Preview')).toBeInTheDocument();
 
     // Select Custom Work
     fireEvent.click(screen.getByRole('button', { name: /Custom Work/i }));
 
     // Now hasPresetStep is false, '用途预设' should not be present
-    expect(screen.getByTitle('工作类型')).toBeInTheDocument();
-    expect(screen.queryByTitle('用途预设')).not.toBeInTheDocument();
-    expect(screen.getByTitle('基本信息')).toBeInTheDocument();
-    expect(screen.getByTitle('文件配置')).toBeInTheDocument();
-    expect(screen.getByTitle('结构预览')).toBeInTheDocument();
+    expect(screen.getByTitle('Work type')).toBeInTheDocument();
+    expect(screen.queryByTitle('Preset')).not.toBeInTheDocument();
+    expect(screen.getByTitle('Basic information')).toBeInTheDocument();
+    expect(screen.getByTitle('Files')).toBeInTheDocument();
+    expect(screen.getByTitle('Preview')).toBeInTheDocument();
   });
 
   it('disables the "确认创建" button when registry is loading for document work', () => {
@@ -199,18 +199,18 @@ describe('CreateHarnessModal', () => {
 
     // Choose document work
     fireEvent.click(screen.getByRole('button', { name: /Document Work/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Select preset
     fireEvent.click(screen.getByRole('button', { name: /Professional Report/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Enter name
-    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Doc Harness' } });
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Doc Harness' } });
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Files selection
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Confirm button should be disabled when presets are loading
     rerender(
@@ -223,7 +223,7 @@ describe('CreateHarnessModal', () => {
         isPresetsLoading={true}
       />
     );
-    const confirmBtn = screen.getByRole('button', { name: /确认创建/i });
+    const confirmBtn = screen.getByRole('button', { name: /Create template/i });
     expect(confirmBtn).toBeDisabled();
 
     // Rerender with isPresetsLoading = false
@@ -254,18 +254,18 @@ describe('CreateHarnessModal', () => {
     );
 
     // Default is code work
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Select modules
     fireEvent.click(screen.getByRole('button', { name: /Technical Design/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Enter name
-    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Code Harness' } });
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Code Harness' } });
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Files selection
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Confirm button should be disabled because isCodeModulesLoading is true
     rerender(
@@ -279,7 +279,7 @@ describe('CreateHarnessModal', () => {
         isCodeSharedFilesLoading={false}
       />
     );
-    const confirmBtn = screen.getByRole('button', { name: /确认创建/i });
+    const confirmBtn = screen.getByRole('button', { name: /Create template/i });
     expect(confirmBtn).toBeDisabled();
 
     // Rerender with isCodeModulesLoading = false and isCodeSharedFilesLoading = true
@@ -327,14 +327,14 @@ describe('CreateHarnessModal', () => {
 
     // Select Custom Work
     fireEvent.click(screen.getByRole('button', { name: /Custom Work/i }));
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Enter name
-    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Custom Harness' } });
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Custom Harness' } });
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Files selection
-    fireEvent.click(screen.getByRole('button', { name: /下一步/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
     // Confirm button should be disabled because isPresetsLoading is true
     rerender(
@@ -349,7 +349,7 @@ describe('CreateHarnessModal', () => {
         isCodeSharedFilesLoading={false}
       />
     );
-    const confirmBtn = screen.getByRole('button', { name: /确认创建/i });
+    const confirmBtn = screen.getByRole('button', { name: /Create template/i });
     expect(confirmBtn).toBeDisabled();
 
     // Rerender with isPresetsLoading = false and isCodeSharedFilesLoading = true

@@ -38,8 +38,8 @@ describe('foundation routes', () => {
   it.each([
     ['/', 'Projects'],
     ['/projects', 'Projects'],
-    ['/skills', 'Skills 管理'],
-    ['/agents', 'Agents 管理'],
+    ['/skills', 'Skills'],
+    ['/agents', 'Agents'],
     ['/tasks', '任务中心'],
     ['/settings', 'Settings'],
   ])('renders %s as %s', async (path, heading) => {

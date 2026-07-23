@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Download, ArrowLeft, Save, Copy, Trash, File, FolderOpen, RefreshCw, CheckCircle, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   getHarnessTemplates,
   getHarnessTemplate,
@@ -25,6 +26,7 @@ import { HarnessTemplateSummary, HarnessFileSummary, HarnessTemplateDetail } fro
 import './harness.css';
 
 export function GlobalHarnessPage() {
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterWorkType, setFilterWorkType] = useState<string>('all');
@@ -97,7 +99,7 @@ export function GlobalHarnessPage() {
       setIsCreateOpen(false);
     },
     onError: (err: any) => {
-      alert(`创建模板失败: ${err.message || String(err)}`);
+      alert(t('harness.createFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -108,10 +110,10 @@ export function GlobalHarnessPage() {
       queryClient.invalidateQueries({ queryKey: ['harness-detail', selectedTemplateId] });
       queryClient.invalidateQueries({ queryKey: ['harness-summaries'] });
       setIsDirty(false);
-      alert('文件保存成功！');
+      alert(t('harness.saveSucceeded'));
     },
     onError: (err: any) => {
-      alert(`保存文件失败: ${err.message || String(err)}`);
+      alert(t('harness.saveFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -124,7 +126,7 @@ export function GlobalHarnessPage() {
       setActiveFilePath(newFile.path);
     },
     onError: (err: any) => {
-      alert(`创建文件失败: ${err.message || String(err)}`);
+      alert(t('harness.createFileFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -140,7 +142,7 @@ export function GlobalHarnessPage() {
       }
     },
     onError: (err: any) => {
-      alert(`删除文件失败: ${err.message || String(err)}`);
+      alert(t('harness.deleteFileFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -153,7 +155,7 @@ export function GlobalHarnessPage() {
       setEditorContent('');
     },
     onError: (err: any) => {
-      alert(`删除模板失败: ${err.message || String(err)}`);
+      alert(t('harness.deleteFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -166,7 +168,7 @@ export function GlobalHarnessPage() {
       setActiveFilePath('AGENTS.md');
     },
     onError: (err: any) => {
-      alert(`复制模板失败: ${err.message || String(err)}`);
+      alert(t('harness.duplicateFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -180,7 +182,7 @@ export function GlobalHarnessPage() {
       setIsImportOpen(false);
     },
     onError: (err: any) => {
-      alert(`导入模板失败: ${err.message || String(err)}`);
+      alert(t('harness.importFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -194,7 +196,7 @@ export function GlobalHarnessPage() {
       setIsImportOpen(false);
     },
     onError: (err: any) => {
-      alert(`提取模板失败: ${err.message || String(err)}`);
+      alert(t('harness.extractFailed', { error: err.message || String(err) }));
     },
   });
 
@@ -239,7 +241,7 @@ export function GlobalHarnessPage() {
 
   const handleDuplicateTemplate = () => {
     if (!selectedTemplateId) return;
-    const targetName = prompt('请输入新副本的显示名称:');
+    const targetName = prompt(t('harness.duplicatePrompt'));
     if (!targetName) return;
 
     duplicateMut.mutate({
@@ -260,10 +262,10 @@ export function GlobalHarnessPage() {
 
   const getWorkTypeLabel = (wt: string) => {
     switch (wt) {
-      case 'code': return 'Code Work';
-      case 'document': return 'Document Work';
-      case 'presentation': return 'Presentation Work';
-      default: return 'Custom';
+      case 'code': return t('harness.code');
+      case 'document': return t('harness.document');
+      case 'presentation': return t('harness.presentation');
+      default: return t('harness.custom');
     }
   };
 
@@ -271,7 +273,7 @@ export function GlobalHarnessPage() {
     return (
       <div className="page-state">
         <div className="loading-dot" />
-        <p>加载 Harness 模板库...</p>
+        <p>{t('harness.loading')}</p>
       </div>
     );
   }
@@ -303,10 +305,10 @@ export function GlobalHarnessPage() {
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
               <button type="button" className="button button--secondary" onClick={handleDuplicateTemplate}>
-                <Copy size={16} style={{ marginRight: '0.35rem' }} /> 复制副本
+                <Copy size={16} style={{ marginRight: '0.35rem' }} /> {t('harness.duplicate')}
               </button>
               <button type="button" className="button button--secondary" onClick={handleDeleteTemplate} style={{ color: 'var(--color-danger)' }}>
-                <Trash size={16} style={{ marginRight: '0.35rem' }} /> 删除模板
+                <Trash size={16} style={{ marginRight: '0.35rem' }} /> {t('harness.deleteTemplate')}
               </button>
             </div>
           </header>
@@ -315,9 +317,9 @@ export function GlobalHarnessPage() {
             {/* Column 1: File Tree (Left) */}
             <div className="harness-editor__tree">
               <div className="harness-tree__header">
-                <h4>📁 模板文件树</h4>
+                <h4>📁 {t('harness.templateFiles')}</h4>
                 <div className="harness-tree__actions">
-                  <button type="button" className="harness-tree__btn" title="新建文件" onClick={handleCreateFile}>
+                  <button type="button" className="harness-tree__btn" title={t('harness.newFile')} aria-label={t('harness.newFile')} onClick={handleCreateFile}>
                     <Plus size={16} />
                   </button>
                 </div>
@@ -335,7 +337,7 @@ export function GlobalHarnessPage() {
                       onClick={() => {
                         if (isDeletingConfirm) return;
                         if (isDirty) {
-                          if (!confirm('当前文件有未保存的修改，切换文件将丢失修改。是否继续？')) {
+                          if (!confirm(t('harness.discardChanges'))) {
                             return;
                           }
                         }
@@ -352,21 +354,21 @@ export function GlobalHarnessPage() {
                             <button
                               type="button"
                               className="harness-tree__confirm-btn harness-tree__confirm-btn--yes"
-                              title="确认删除"
+                              title={t('harness.confirmDelete')}
                               onClick={() => {
                                 deleteFileMut.mutate({ templateId: selectedTemplateId!, path: file.path });
                                 setDeletingFilePath(null);
                               }}
                             >
-                              确认
+                              {t('common.delete')}
                             </button>
                             <button
                               type="button"
                               className="harness-tree__confirm-btn harness-tree__confirm-btn--no"
-                              title="取消"
+                              title={t('common.cancel')}
                               onClick={() => setDeletingFilePath(null)}
                             >
-                              取消
+                              {t('common.cancel')}
                             </button>
                           </div>
                         ) : (
@@ -377,7 +379,7 @@ export function GlobalHarnessPage() {
                               e.stopPropagation();
                               setDeletingFilePath(file.path);
                             }}
-                            title="删除文件"
+                            title={t('harness.deleteFile')}
                           >
                             <Trash size={12} />
                           </button>
@@ -396,7 +398,7 @@ export function GlobalHarnessPage() {
                         className="harness-tree__input"
                         value={newFilePathInput}
                         onChange={(e) => setNewFilePathInput(e.target.value)}
-                        placeholder="输入文件路径 (例: docs/rules.md)..."
+                        placeholder={t('harness.filePath')}
                         autoFocus
                         onBlur={() => {
                           setTimeout(() => {
@@ -412,7 +414,7 @@ export function GlobalHarnessPage() {
                               return;
                             }
                             if (relPath.startsWith('/') || relPath.includes('..')) {
-                              alert('非法的相对文件路径！');
+                              alert(t('harness.invalidPath'));
                               return;
                             }
                             const ext = relPath.split('.').pop() || '';
@@ -444,7 +446,7 @@ export function GlobalHarnessPage() {
                       <span className="harness-editor__filename">{activeFilePath}</span>
                       {isDirty && (
                         <span style={{ fontSize: '0.72rem', color: '#ff9800', background: '#fff3e0', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
-                          未保存
+                          {t('harness.unsaved')}
                         </span>
                       )}
                     </div>
@@ -456,7 +458,7 @@ export function GlobalHarnessPage() {
                         disabled={!isDirty || saveFileMut.isPending}
                         style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
                       >
-                        <Save size={14} style={{ marginRight: '0.35rem' }} /> 保存
+                        <Save size={14} style={{ marginRight: '0.35rem' }} /> {t('common.save')}
                       </button>
                     </div>
                   </div>
@@ -464,7 +466,7 @@ export function GlobalHarnessPage() {
                     {fileLoading ? (
                       <div className="harness-editor__placeholder">
                         <div className="loading-dot" />
-                        <span>正在读取文件...</span>
+                        <span>{t('harness.readingFile')}</span>
                       </div>
                     ) : (
                       <textarea
@@ -474,7 +476,7 @@ export function GlobalHarnessPage() {
                           setEditorContent(e.target.value);
                           setIsDirty(true);
                         }}
-                        placeholder="在此处输入规约内容，支持 Markdown, JSON, TOML 等格式。"
+                        placeholder={t('harness.editorPlaceholder')}
                       />
                     )}
                   </div>
@@ -482,7 +484,7 @@ export function GlobalHarnessPage() {
               ) : (
                 <div className="harness-editor__placeholder">
                   <File size={32} />
-                  <span>请从左侧文件树中选择一个规约文件进行编辑。</span>
+                  <span>{t('harness.chooseFile')}</span>
                 </div>
               )}
             </div>
@@ -491,23 +493,23 @@ export function GlobalHarnessPage() {
             <div className="harness-editor__meta">
               {/* Basic Meta Info */}
               <div className="harness-meta__section">
-                <h4>模板属性</h4>
+                <h4>{t('harness.properties')}</h4>
                 <div className="harness-meta__kv">
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">模板 ID</span>
+                    <span className="harness-meta__kv-label">{t('harness.templateId')}</span>
                     <span className="harness-meta__kv-value">{detail.id}</span>
                   </div>
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">工作类型</span>
+                    <span className="harness-meta__kv-label">{t('harness.workType')}</span>
                     <span className="harness-meta__kv-value">{getWorkTypeLabel(detail.workType)}</span>
                   </div>
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">模板语言</span>
-                    <span className="harness-meta__kv-value">{detail.language === 'zh-CN' ? '简体中文' : 'English'}</span>
+                    <span className="harness-meta__kv-label">{t('harness.language')}</span>
+                    <span className="harness-meta__kv-value">{detail.language === 'zh-CN' ? t('harness.chinese') : 'English'}</span>
                   </div>
                   {detail.workType === 'code' ? (
                     <div className="harness-meta__kv-item" style={{ flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                      <span className="harness-meta__kv-label">启用模块</span>
+                      <span className="harness-meta__kv-label">{t('harness.enabledModules')}</span>
                       <div className="harness-meta__modules-list">
                         {detail.selectedModules && detail.selectedModules.length > 0 ? (
                           detail.selectedModules.map((modId) => {
@@ -520,38 +522,38 @@ export function GlobalHarnessPage() {
                             );
                           })
                         ) : (
-                          <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem' }}>无模块</span>
+                          <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem' }}>{t('harness.noModules')}</span>
                         )}
                       </div>
                     </div>
                   ) : (
                     <div className="harness-meta__kv-item">
-                      <span className="harness-meta__kv-label">创建预设</span>
-                      <span className="harness-meta__kv-value">{detail.createdFromPreset || 'Custom Work'}</span>
+                      <span className="harness-meta__kv-label">{t('harness.createdPreset')}</span>
+                      <span className="harness-meta__kv-value">{detail.createdFromPreset || t('harness.custom')}</span>
                     </div>
                   )}
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">来源类型</span>
-                    <span className="harness-meta__kv-value">{detail.sourceType === 'project' ? '项目提取' : '本地目录'}</span>
+                    <span className="harness-meta__kv-label">{t('harness.sourceType')}</span>
+                    <span className="harness-meta__kv-value">{detail.sourceType === 'project' ? t('harness.sourceProject') : t('harness.sourceFolder')}</span>
                   </div>
                   {detail.sourcePath && (
                     <div className="harness-meta__kv-item" style={{ flexDirection: 'column', gap: '0.15rem' }}>
-                      <span className="harness-meta__kv-label">导入源路径</span>
+                      <span className="harness-meta__kv-label">{t('harness.sourcePath')}</span>
                       <small style={{ wordBreak: 'break-all', color: 'var(--color-muted)', fontSize: '0.75rem' }}>
                         {detail.sourcePath}
                       </small>
                     </div>
                   )}
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">创建时间</span>
+                    <span className="harness-meta__kv-label">{t('harness.createdAt')}</span>
                     <span className="harness-meta__kv-value" style={{ fontSize: '0.75rem' }}>
-                      {new Date(detail.createdAt).toLocaleString()}
+                      {new Date(detail.createdAt).toLocaleString(i18n.language)}
                     </span>
                   </div>
                   <div className="harness-meta__kv-item">
-                    <span className="harness-meta__kv-label">更新时间</span>
+                    <span className="harness-meta__kv-label">{t('harness.updatedOn')}</span>
                     <span className="harness-meta__kv-value" style={{ fontSize: '0.75rem' }}>
-                      {new Date(detail.updatedAt).toLocaleString()}
+                      {new Date(detail.updatedAt).toLocaleString(i18n.language)}
                     </span>
                   </div>
                 </div>
@@ -559,14 +561,14 @@ export function GlobalHarnessPage() {
 
               {/* Health checks panel */}
               <div className="harness-meta__section" style={{ flex: 1 }}>
-                <h4>规约健康诊断</h4>
+                <h4>{t('harness.health')}</h4>
                 <div className="harness-health-score-container">
                   <div className="harness-health-score-ring" data-valid={detail.validation.isValid}>
-                    {detail.validation.isValid ? '合格' : '待修复'}
+                    {detail.validation.isValid ? t('harness.valid') : t('harness.repair')}
                   </div>
                   <div className="harness-health-score-text">
-                    <h5>诊断状态</h5>
-                    <p>{detail.validation.isValid ? '基础依赖完整且校验通过' : '有缺失依赖或语法错误'}</p>
+                    <h5>{t('harness.diagnostic')}</h5>
+                    <p>{detail.validation.isValid ? t('harness.validationPassed') : t('harness.validationFailed')}</p>
                   </div>
                 </div>
 
@@ -576,14 +578,14 @@ export function GlobalHarnessPage() {
                     <div className="harness-validation-icon">
                       {detail.validation.hasAgentsMd ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     </div>
-                    <span>主指令入口 AGENTS.md</span>
+                    <span>{t('harness.agentsEntry')}</span>
                   </div>
 
                   <div className="harness-validation-item" data-type={detail.validation.hasManifest ? 'success' : 'error'}>
                     <div className="harness-validation-icon">
                       {detail.validation.hasManifest ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     </div>
-                    <span>清单配置 docs/harness.toml</span>
+                    <span>{t('harness.manifest')}</span>
                   </div>
 
                   {detail.validation.hasManifest && (
@@ -591,7 +593,7 @@ export function GlobalHarnessPage() {
                       <div className="harness-validation-icon">
                         {detail.validation.manifestParses ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                       </div>
-                      <span>docs/harness.toml 解析状态</span>
+                      <span>{t('harness.manifestStatus')}</span>
                     </div>
                   )}
 
@@ -599,7 +601,7 @@ export function GlobalHarnessPage() {
                   {detail.validation.missingRequiredFiles.map((file: string) => (
                     <div key={file} className="harness-validation-item" data-type="error">
                       <div className="harness-validation-icon"><AlertCircle size={14} /></div>
-                      <span>缺失必需文件: <code>{file}</code></span>
+                      <span>{t('harness.missingFile', { file })}</span>
                     </div>
                   ))}
 
@@ -607,7 +609,7 @@ export function GlobalHarnessPage() {
                   {detail.validation.syntaxErrors.map((err: string) => (
                     <div key={err} className="harness-validation-item" data-type="error">
                       <div className="harness-validation-icon"><AlertCircle size={14} /></div>
-                      <span>语法校验失败: {err}</span>
+                      <span>{t('harness.syntaxError', { error: err })}</span>
                     </div>
                   ))}
 
@@ -615,7 +617,7 @@ export function GlobalHarnessPage() {
                   {detail.validation.warnings.map((warn) => (
                     <div key={warn} className="harness-validation-item" data-type="warning">
                       <div className="harness-validation-icon"><AlertTriangle size={14} /></div>
-                      <span>规约引流警告: {warn}</span>
+                      <span>{t('harness.warning', { warning: warn })}</span>
                     </div>
                   ))}
                 </div>
@@ -628,9 +630,9 @@ export function GlobalHarnessPage() {
         <div className="page-stack">
           <header className="page-header" style={{ minHeight: 'auto', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.75rem', lineHeight: 1 }}>Harness 模板管理</h1>
+              <h1 style={{ fontSize: '1.75rem', lineHeight: 1 }}>{t('harness.title')}</h1>
               <span style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>
-                定义面向长周期 AI 协同项目的工程规约、验收标准与高风险边界。
+                {t('harness.description')}
               </span>
             </div>
           </header>
@@ -639,7 +641,8 @@ export function GlobalHarnessPage() {
             <div className="harness-toolbar__left">
               <input
                 className="harness-search-input"
-                placeholder="搜索模板名称、ID或描述..."
+                placeholder={t('harness.search')}
+                aria-label={t('harness.search')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -648,39 +651,39 @@ export function GlobalHarnessPage() {
                 value={filterWorkType}
                 onChange={(e) => setFilterWorkType(e.target.value)}
               >
-                <option value="all">全部工作类型</option>
-                <option value="code">Code Work (代码编写)</option>
-                <option value="document">Document Work (报告论文)</option>
-                <option value="presentation">Presentation Work (演示汇报)</option>
-                <option value="custom">Custom (自定义规格)</option>
+                <option value="all">{t('harness.allWorkTypes')}</option>
+                <option value="code">{t('harness.code')}</option>
+                <option value="document">{t('harness.document')}</option>
+                <option value="presentation">{t('harness.presentation')}</option>
+                <option value="custom">{t('harness.custom')}</option>
               </select>
             </div>
 
             <div className="harness-toolbar__actions">
               <button className="button button--secondary" onClick={() => refetchSummaries()}>
-                <RefreshCw size={16} /> 刷新
+                <RefreshCw size={16} /> {t('harness.refresh')}
               </button>
               <button className="button button--secondary" onClick={() => setIsImportOpen(true)}>
-                <Download size={16} style={{ marginRight: '0.35rem' }} /> 导入模板
+                <Download size={16} style={{ marginRight: '0.35rem' }} /> {t('harness.import')}
               </button>
               <button className="button button--primary" onClick={() => setIsCreateOpen(true)}>
-                <Plus size={16} /> 新建 Harness
+                <Plus size={16} /> {t('harness.create')}
               </button>
             </div>
           </div>
 
           {filteredSummaries.length === 0 ? (
             <div className="harness-empty-state">
-              <h3>暂无 Harness 模板</h3>
+              <h3>{t('harness.emptyTitle')}</h3>
               <p>
-                模板是指导 Agent 工作的核心规范配置包，定义了核心指令（AGENTS.md）及验收标准、高风险检查等文件资产。
+                {t('harness.emptyDescription')}
               </p>
               <div className="harness-empty-ctas">
                 <button type="button" className="button button--primary" onClick={() => setIsCreateOpen(true)}>
-                  <Plus size={16} /> 新建 Harness
+                  <Plus size={16} /> {t('harness.create')}
                 </button>
                 <button type="button" className="button button--secondary" onClick={() => setIsImportOpen(true)}>
-                  <Download size={16} style={{ marginRight: '0.35rem' }} /> 导入已有模板
+                  <Download size={16} style={{ marginRight: '0.35rem' }} /> {t('harness.importExisting')}
                 </button>
               </div>
             </div>
@@ -701,20 +704,20 @@ export function GlobalHarnessPage() {
                       {getWorkTypeLabel(summary.workType)}
                     </span>
                   </div>
-                  <p className="harness-card__desc">{summary.description || '暂无详细描述。'}</p>
+                  <p className="harness-card__desc">{summary.description || t('harness.noDescription')}</p>
                   <div className="harness-card__footer">
                     <div className="harness-card__footer-left">
-                      <span>文件: <strong>{summary.fileCount}</strong></span>
+                      <span>{t('harness.files')}: <strong>{summary.fileCount}</strong></span>
                       <span>•</span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
                         {summary.isValid ? (
-                          <span style={{ color: 'var(--color-success-ink)' }}>● 状态良好</span>
+                          <span style={{ color: 'var(--color-success-ink)' }}>● {t('harness.healthy')}</span>
                         ) : (
-                          <span style={{ color: 'var(--color-danger)' }}>● 待修复</span>
+                          <span style={{ color: 'var(--color-danger)' }}>● {t('harness.needsRepair')}</span>
                         )}
                       </span>
                     </div>
-                    <span>更新于 {new Date(summary.updatedAt).toLocaleDateString()}</span>
+                    <span>{t('harness.updatedAt', { date: new Date(summary.updatedAt).toLocaleDateString(i18n.language) })}</span>
                   </div>
                 </div>
               ))}

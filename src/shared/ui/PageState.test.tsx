@@ -22,7 +22,7 @@ describe('PageState', () => {
         onRetry={retry}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '重试' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(retry).toHaveBeenCalledOnce();
 
     view.rerender(<PageState state="content"><p>项目内容</p></PageState>);
