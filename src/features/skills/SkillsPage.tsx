@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   AppError,
   checkSkillUpdates,
@@ -27,6 +28,7 @@ import { projectCatalog } from './skillCatalog';
 import './components/skills.css';
 
 export function SkillsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function SkillsPage() {
     },
     onError: (error, skillId) => {
       if (error instanceof AppError && error.details?.includes('enabled in projects')) {
-        if (confirm('该扩展包正在被项目使用。是否从所有项目移除后卸载？')) {
+        if (confirm(t('skills.occupiedDetail'))) {
           deleteEverywhereMut.mutate(skillId);
         }
       }
@@ -149,10 +151,10 @@ export function SkillsPage() {
         queryClient.setQueryData(['skill-detail', skillId], context.previousDetail);
       }
       if (error instanceof AppError) {
-        alert(`信任失败: ${error.details ?? error.message}`);
+        alert(t('skills.trustFailed', { details: error.details ?? error.message }));
         return;
       }
-      alert(`信任失败: ${error instanceof Error ? error.message : String(error)}`);
+      alert(t('skills.trustFailed', { details: error instanceof Error ? error.message : String(error) }));
     },
   });
 
@@ -186,7 +188,7 @@ export function SkillsPage() {
     return (
       <div className="page-state">
         <div className="loading-dot" />
-        <p>加载技能目录...</p>
+        <p>{t('skills.loading')}</p>
       </div>
     );
   }
@@ -206,17 +208,17 @@ export function SkillsPage() {
   const catalogResults = projectCatalog(skills, search, selectedCategoryId);
 
   const getCategoryName = (catId?: string) => {
-    if (!catId) return '未分类';
-    return categories.find((c) => c.id === catId)?.name || '未分类';
+    if (!catId) return t('skills.uncategorized');
+    return categories.find((c) => c.id === catId)?.name || t('skills.uncategorized');
   };
 
   return (
     <div className="page-stack skills-page-container">
       <header className="page-header" style={{ minHeight: 'auto', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
-          <h1 style={{ fontSize: '1.75rem', lineHeight: 1 }}>Skills 管理</h1>
+          <h1 style={{ fontSize: '1.75rem', lineHeight: 1 }}>{t('skills.title')}</h1>
           <span style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>
-            管理全局 AI 技能，自定义分类并将其启用至平台。
+            {t('skills.description')}
           </span>
         </div>
       </header>
@@ -236,24 +238,24 @@ export function SkillsPage() {
           <div className="skills-toolbar">
             <input
               className="search-input"
-              placeholder="搜索技能名称或描述..."
+              placeholder={t('skills.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <div className="skills-toolbar__actions">
               <button className="button button--secondary" onClick={() => refetchUpdates()} disabled={updatesLoading}>
                 <RefreshCw size={16} className={updatesLoading ? 'is-spinning' : ''} />
-                检查更新
+                {t('skills.checkUpdates')}
               </button>
               <button className="button button--primary" onClick={() => setIsImportOpen(true)}>
-                <Plus size={16} /> 导入技能
+                <Plus size={16} /> {t('skills.import')}
               </button>
             </div>
           </div>
 
           {catalogResults.length === 0 ? (
             <div className="page-state">
-              <p>没有找到匹配的技能</p>
+              <p>{t('skills.noResults')}</p>
             </div>
           ) : (
             <div className="skills-cards-grid">
@@ -267,7 +269,7 @@ export function SkillsPage() {
                   onOpenDetail={() => setActiveDetailId(result.type === 'member' ? { skillId: result.skill.id, memberId: result.member.id } : { skillId: result.skill.id })}
                   onUpdate={result.skill.source.kind === 'git' ? (e) => {
                     e.stopPropagation();
-                    if (confirm(`更新 "${result.skill.metadata.name}"？所有未修改的项目副本也会同步。`)) {
+                    if (confirm(t('skills.updatePrompt', { name: result.skill.metadata.name }))) {
                       updateSkillMut.mutate(result.skill.id);
                     }
                   } : undefined}

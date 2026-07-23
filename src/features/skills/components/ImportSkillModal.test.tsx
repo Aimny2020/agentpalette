@@ -2,14 +2,16 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ImportSkillModal } from './ImportSkillModal';
 import { inspectSkillImport } from '../../../shared/api/tauriClient';
+import i18n from '../../../shared/i18n/i18n';
 
 vi.mock('../../../shared/api/tauriClient', () => ({
   inspectSkillImport: vi.fn(),
 }));
 
 describe('ImportSkillModal', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.mocked(inspectSkillImport).mockReset();
+    await i18n.changeLanguage('zh-CN');
   });
 
   it('renders installation ID and normalized Git source on inspection preview', async () => {
