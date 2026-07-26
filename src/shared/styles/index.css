@@ -659,6 +659,9 @@ body:has(.fixed-workspace-page) {
 .about-details strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .about-details button:disabled { cursor: not-allowed; opacity: .65; }
 .about-retry { width: fit-content; }
+.about-github-text-link { color: var(--color-primary-strong); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; overflow-wrap: anywhere; text-align: right; text-decoration: none; }
+.about-github-text-link:hover { color: var(--color-primary-ink); text-decoration: underline; }
+.about-github-text-link:focus-visible { outline: 2px solid var(--color-primary-ring); outline-offset: 3px; border-radius: .2rem; }
 .settings-error-copy { color: var(--color-danger) !important; }
 
 .settings-grid--launch { grid-template-columns: repeat(2, minmax(0, 1fr)); }

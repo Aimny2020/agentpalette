@@ -33,8 +33,8 @@ describe('SkillCard', () => {
       />,
     );
 
-    expect(screen.getByText('技能扩展包')).toBeInTheDocument();
-    expect(screen.getByText('13 个 Skills')).toBeInTheDocument();
+    expect(screen.getByText('Skill package')).toBeInTheDocument();
+    expect(screen.getByText('13 Skills')).toBeInTheDocument();
     expect(screen.getByText('有更新')).toBeInTheDocument();
     expect(screen.getByText('需要信任')).toBeInTheDocument();
   });

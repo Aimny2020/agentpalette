@@ -124,21 +124,23 @@ function GeneralSettings() {
 }
 
 function AboutSettings({ version, loading, error, onRetry }: { version?: string; loading: boolean; error: boolean; onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="settings-about" aria-labelledby="about-settings-title">
       <div className="about-product">
-        <img src={appIcon} alt="AgentPalette 应用图标" />
+        <img src={appIcon} alt={t('settings.aboutProductAlt')} />
         <div>
           <h2 id="about-settings-title">AgentPalette</h2>
-          <p>跨工具、本地优先的 Agent 工作空间管理器。</p>
+          <p>{t('settings.aboutTagline')}</p>
         </div>
       </div>
 
-      <section className="about-details" aria-label="应用信息">
-        <div><span>当前版本</span>{loading ? <small>正在读取...</small> : error ? <small className="settings-error-copy">读取失败</small> : <strong>{version}</strong>}</div>
-        <div><span>更新</span><button type="button" className="button button--secondary" disabled>检查更新（暂未开放）</button></div>
+      <section className="about-details" aria-label={t('settings.aboutDetails')}>
+        <div><span>{t('settings.currentVersion')}</span>{loading ? <small>{t('settings.readingVersion')}</small> : error ? <small className="settings-error-copy">{t('settings.versionReadFailed')}</small> : <strong>{version}</strong>}</div>
+        <div><span>{t('settings.githubRepository')}</span><a className="about-github-text-link" href="https://github.com/Aimny2020/agentpalette" target="_blank" rel="noreferrer" aria-label={t('settings.openGithub')}>github.com/Aimny2020/agentpalette ↗</a></div>
+        <div><span>{t('settings.updates')}</span><button type="button" className="button button--secondary" disabled>{t('settings.checkUpdatesUnavailable')}</button></div>
       </section>
-      {error && <button type="button" className="button button--secondary about-retry" onClick={onRetry}>重新读取版本</button>}
+      {error && <button type="button" className="button button--secondary about-retry" onClick={onRetry}>{t('settings.retryVersion')}</button>}
     </div>
   );
 }

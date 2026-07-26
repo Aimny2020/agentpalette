@@ -1,5 +1,6 @@
 import React from 'react';
 import { Download, Package, ShieldAlert, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Skill, SkillMember, SkillUpdateStatus } from '../../../shared/api/types';
 
 interface Props {
@@ -21,6 +22,7 @@ export function SkillCard({
   updateStatus = skill.update_status,
   onUpdate,
 }: Props) {
+  const { t } = useTranslation();
   const metadata = member?.metadata ?? skill.metadata;
   const customDescription = member ? member.custom_description : skill.custom_description;
   return (
@@ -29,7 +31,7 @@ export function SkillCard({
         <div className="skill-card-tags">
           <span className="category-tag">{categoryName}</span>
           {skill.kind === 'pack' && !member && (
-            <span className="pack-tag"><Package size={12} />技能扩展包</span>
+            <span className="pack-tag"><Package size={12} />{t('skills.packTag')}</span>
           )}
           {member && <span className="pack-tag">来自 {skill.metadata.name}</span>}
         </div>
@@ -58,7 +60,7 @@ export function SkillCard({
         )}
       </p>
       <div className="skill-state-row">
-        {skill.kind === 'pack' && !member && <span>{skill.members.length} 个 Skills</span>}
+        {skill.kind === 'pack' && !member && <span>{t('skills.packMembers', { count: skill.members.length })}</span>}
         {updateStatus === 'available' && <span className="state-pill state-pill--update">有更新</span>}
         {updateStatus === 'dirty' && <span className="state-pill">本地已修改</span>}
         {skill.has_executable_content && !skill.trusted && (
