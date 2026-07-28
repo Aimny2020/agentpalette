@@ -1,6 +1,6 @@
 # Harness Template Management Design
 
-> Compatibility note: `~/.agent-forge/` remains the internal persistent data root so existing Harness templates retain stable paths across the AgentPalette rename.
+> Harness templates use the AgentPalette user data root: `~/.agentpalette/`.
 
 ## Goal
 
@@ -187,7 +187,7 @@ Health checks warn about:
 Templates are stored as managed directories under the global AgentPalette data path:
 
 ```text
-~/.agent-forge/harnesses/
+~/.agentpalette/harnesses/
   5c91f4d0-8da2-4d89-a469-fd2d8f1db0ad/
     AGENTS.md
     docs/

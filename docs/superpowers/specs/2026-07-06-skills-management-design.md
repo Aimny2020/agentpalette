@@ -1,11 +1,11 @@
 # Skills Management Design Spec
 
-> 兼容性说明：`~/.agent-forge/` 继续作为内部持久化数据根目录，避免 AgentPalette 更名后已有 Skills 看似丢失。
+> 全局 Skills 的持久化数据根目录为 `~/.agentpalette/`。
 
 ## 1. Goal and Scope
 
 Skills Management 模块用于管理 AgentPalette 的全局可复用“技能库”（Capability Catalog）。技能用于配置、指导或扩展各种 Agent 的行为。本模块将实现：
-- **全局文件存储**：所有技能存放在用户家目录的全局路径 `~/.agent-forge/skills/` 下，每个技能是一个独立的文件夹，内部包含 `SKILL.md`（内嵌 YAML Frontmatter 描述与正文说明）。
+- **全局文件存储**：所有技能存放在用户家目录的全局路径 `~/.agentpalette/skills/` 下，每个技能是一个独立的文件夹，内部包含 `SKILL.md`（内嵌 YAML Frontmatter 描述与正文说明）。
 - **用户自定义数据持久化**：使用已有的 SQLite 数据库存储用户自定义的属性（包含技能所属分类、个人备注/使用说明）。
 - **项目级启用机制**：技能的“启用/停用”状态属于项目级别，通过独立的 `project_skills` 关系表持久化。用户在项目详情页（Harness）中统一为当前项目启用或禁用技能。
 - **完全自定义的分类**：支持用户显式新建、重命名、删除分类。新导入的技能默认属于“未分类”（Uncategorized）。
@@ -24,11 +24,11 @@ Skills Management 模块用于管理 AgentPalette 的全局可复用“技能库
 ## 2. Data Architecture & Schema
 
 ### 2.1 物理文件结构
-全局技能文件夹路径为：`~/.agent-forge/skills/`。
+全局技能文件夹路径为：`~/.agentpalette/skills/`。
 每个技能是一个子目录，子目录名称作为该技能的唯一 ID (`skill_id`)。
 
 ```text
-~/.agent-forge/skills/
+~/.agentpalette/skills/
 ├── systematic-debugging/
 │   ├── SKILL.md            # 必须包含，内有 YAML Frontmatter 和正文
 │   └── scripts/            # 可选扩展文件夹
@@ -243,7 +243,7 @@ pub async fn delete_category(state: tauri::State<'_, AppState>, id: String) -> R
   - 测试 `HarnessPage` 中勾选技能开启/停用状态同步到数据库的逻辑。
 
 ### 6.2 手动验证
-- 创建包含 `SKILL.md` 的本地文件夹，测试通过 Local Folder 导入，验证是否能成功复制至全局 `~/.agent-forge/skills/` 目录下。
+- 创建包含 `SKILL.md` 的本地文件夹，测试通过 Local Folder 导入，验证是否能成功复制至全局 `~/.agentpalette/skills/` 目录下。
 - 输入一个公开的 Git Skill 仓库，测试通过 Git 链接克隆导入。
 - 在页面中新建分类，将技能拖入（或下拉选择）到新分类，并在侧边栏中切换分类确认过滤正常。
-- 物理删除技能，确认 `~/.agent-forge/skills/` 下该文件夹被完全删除，数据库元数据也被清空。
+- 物理删除技能，确认 `~/.agentpalette/skills/` 下该文件夹被完全删除，数据库元数据也被清空。

@@ -366,7 +366,7 @@ export function CreateHarnessModal({
             <section className="harness-wizard-panel">
               <p className="harness-wizard-hint">{t('harness.previewHint')}</p>
               <div className="harness-tree-preview">
-                <div>📁 ~/.agent-forge/harnesses/&lt;system-generated-id&gt;/ <small>({t('harness.compatibleDataDirectory')})</small></div>
+                <div>📁 ~/.agentpalette/harnesses/&lt;system-generated-id&gt;/ <small>({t('harness.compatibleDataDirectory')})</small></div>
                 <div>&nbsp; 📄 AGENTS.md <small>({t('harness.requiredAgentEntry')})</small></div>
                 <div>&nbsp; 📁 docs/</div>
                 <div>&nbsp;&nbsp; 📄 harness.toml <small>({t('harness.requiredMetadata')})</small></div>

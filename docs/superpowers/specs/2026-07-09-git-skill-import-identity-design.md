@@ -1,6 +1,6 @@
 # Git Skill 导入身份设计
 
-> 兼容性说明：`~/.agent-forge/` 继续作为内部持久化数据根目录，保证导入的 Skills 在 AgentPalette 更名后路径稳定。
+> 全局 Skills 存储在 AgentPalette 的用户数据根目录 `~/.agentpalette/` 中。
 
 ## 1. 目标
 
@@ -37,7 +37,7 @@ github.com/obra/superpowers    -> obra-superpowers
 Git source identity  = normalized_source
 Git install identity = owner-repo
 Display name         = metadata.name 优先，缺失时用 owner-repo
-Global folder        = ~/.agent-forge/skills/{skill_id}
+Global folder        = ~/.agentpalette/skills/{skill_id}
 Project folder       = <project>/.agents/skills/{skill_id}
 Update identity      = source_url + tracked_ref + installed_commit
 ```
@@ -104,14 +104,14 @@ skill_id          = owner-repo 安装身份
 全局目录必须使用：
 
 ```text
-~/.agent-forge/skills/{skill_id}
+~/.agentpalette/skills/{skill_id}
 ```
 
 例如：
 
 ```text
-~/.agent-forge/skills/anthropics-skills/
-~/.agent-forge/skills/mattpocock-skills/
+~/.agentpalette/skills/anthropics-skills/
+~/.agentpalette/skills/mattpocock-skills/
 ```
 
 导入过程：
@@ -121,7 +121,7 @@ skill_id          = owner-repo 安装身份
 3. 生成 `skill_id`。
 4. clone 到临时 staging 目录。
 5. 扫描并校验 `SKILL.md`。
-6. 将 staging 目录移动到 `~/.agent-forge/skills/{skill_id}`。
+6. 将 staging 目录移动到 `~/.agentpalette/skills/{skill_id}`。
 7. 写入 `skill_packages` 记录。
 
 ## 7. 导入预览
@@ -201,7 +201,7 @@ mattpocock-skills::skills/foo
 全局目录：
 
 ```text
-~/.agent-forge/skills/anthropics-skills/
+~/.agentpalette/skills/anthropics-skills/
 ```
 
 项目目录：
@@ -245,7 +245,7 @@ installed_commit
 
 1. clone 到临时 staging 目录。
 2. 校验新目录包含合法 Skill 内容。
-3. 替换 `~/.agent-forge/skills/{skill_id}`。
+3. 替换 `~/.agentpalette/skills/{skill_id}`。
 4. 更新 `installed_commit`。
 5. 对干净的项目副本进行同步。
 6. 对已修改的项目副本保持不覆盖，并标记需要用户处理。
@@ -266,7 +266,7 @@ new_skill_id      = mattpocock-skills
 
 迁移内容：
 
-- 全局目录：`~/.agent-forge/skills/skills` -> `~/.agent-forge/skills/mattpocock-skills`
+- 全局目录：`~/.agentpalette/skills/skills` -> `~/.agentpalette/skills/mattpocock-skills`
 - `skill_packages.skill_id`
 - `skills_user_meta.skill_id`
 - `project_skills.skill_id`

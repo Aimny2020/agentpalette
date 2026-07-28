@@ -28,4 +28,4 @@ This workspace has no Git history yet; use Conventional Commits such as `feat: a
 
 ## Security & Configuration
 
-Never commit secrets, `.env` files, local databases, or generated Agent credentials. Future project-shared settings belong in `.agentpalette/manifest.toml`; sensitive values must be referenced by name and stored in the system Keychain. Keep the legacy `.agentforge/` metadata directory reserved and ignored until an explicit migration is implemented.
+Never commit secrets, `.env` files, local databases, or generated Agent credentials. Future project-shared settings belong in `.agentpalette/manifest.toml`; sensitive values must be referenced by name and stored in the system Keychain.

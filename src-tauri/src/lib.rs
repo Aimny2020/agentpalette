@@ -16,8 +16,7 @@ use infrastructure::database::SqliteDatabase;
 use infrastructure::system::PlatformSystem;
 use tauri::Manager;
 
-// Keep the pre-rename filename so upgrades continue opening the existing SQLite database.
-const LEGACY_DATABASE_FILENAME: &str = "agentforge.db";
+const DATABASE_FILENAME: &str = "agentpalette.db";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,9 +29,7 @@ pub fn run() {
             std::fs::create_dir_all(&app_data_dir)
                 .map_err(|_| domain::error::DomainError::AppDataDirectory)?;
 
-            let database = Arc::new(SqliteDatabase::open(
-                &app_data_dir.join(LEGACY_DATABASE_FILENAME),
-            )?);
+            let database = Arc::new(SqliteDatabase::open(&app_data_dir.join(DATABASE_FILENAME))?);
             let system = Arc::new(PlatformSystem::current());
             let skills = application::skill_service::SkillService::new(
                 Arc::clone(&database) as Arc<dyn crate::domain::ports::SkillRepository>

@@ -19,6 +19,6 @@ describe('themeStore', () => {
     useThemeStore.getState().setTheme('dark');
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
-    expect(localStorage.getItem('agentforge-theme')).toContain('dark');
+    expect(localStorage.getItem('agentpalette-theme')).toContain('dark');
   });
 });

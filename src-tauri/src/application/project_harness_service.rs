@@ -12,8 +12,7 @@ use crate::domain::project_harness::{
     ProjectHarnessConflict, ProjectHarnessFile, ProjectHarnessRecord, ProjectHarnessStatus,
 };
 
-// Templates and backups share the pre-rename data root to preserve existing user content.
-const LEGACY_GLOBAL_DATA_DIRECTORY: &str = ".agent-forge";
+const GLOBAL_DATA_DIRECTORY: &str = ".agentpalette";
 
 pub struct ProjectHarnessService {
     project_repo: Arc<dyn SkillRepository>,
@@ -34,7 +33,7 @@ impl ProjectHarnessService {
             project_harness_repo,
             templates_dir: dirs::home_dir()
                 .expect("Failed to locate home directory")
-                .join(LEGACY_GLOBAL_DATA_DIRECTORY)
+                .join(GLOBAL_DATA_DIRECTORY)
                 .join("harnesses"),
         }
     }
@@ -399,7 +398,7 @@ fn backup_file(project_id: &str, source: &Path, content: &[u8]) -> DomainResult<
         .unwrap_or("file");
     let backup_root = dirs::home_dir()
         .ok_or_else(|| DomainError::Database("无法定位本地备份目录".into()))?
-        .join(LEGACY_GLOBAL_DATA_DIRECTORY)
+        .join(GLOBAL_DATA_DIRECTORY)
         .join("project-harness-backups")
         .join(project_id)
         .join(
@@ -450,9 +449,7 @@ fn collect_docs_files(
     for entry in fs::read_dir(current).map_err(|e| DomainError::Database(e.to_string()))? {
         let entry = entry.map_err(|e| DomainError::Database(e.to_string()))?;
         let name = entry.file_name().to_string_lossy().into_owned();
-        // Ignore both the legacy project metadata directory and the new brand-aligned spelling.
-        if name == ".git" || name == ".DS_Store" || name == ".agentforge" || name == ".agentpalette"
-        {
+        if name == ".git" || name == ".DS_Store" || name == ".agentpalette" {
             continue;
         }
         let path = entry.path();

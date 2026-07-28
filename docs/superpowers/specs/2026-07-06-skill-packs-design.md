@@ -1,6 +1,6 @@
 # Skill Packs Design
 
-> Compatibility note: `~/.agent-forge/` remains the internal persistent data root so existing Skills stay available after the AgentPalette rename.
+> Skill packages use the AgentPalette user data root: `~/.agentpalette/`.
 
 ## Goal
 
@@ -16,7 +16,7 @@ Extend the existing Skills catalog so AgentPalette can manage both standalone Sk
 
 ## Discovery
 
-AgentPalette recursively scans each immediate child of `~/.agent-forge/skills/` for `SKILL.md` files. Discovery does not follow symbolic links and ignores `.git`, `node_modules`, `target`, and hidden cache directories.
+AgentPalette recursively scans each immediate child of `~/.agentpalette/skills/` for `SKILL.md` files. Discovery does not follow symbolic links and ignores `.git`, `node_modules`, `target`, and hidden cache directories.
 
 Each catalog entry has a stable top-level ID. Pack members have stable IDs derived from the pack ID and their relative path, while their source directory is preserved unchanged. Existing libraries are re-indexed automatically; no re-import or file movement is required.
 

@@ -1,6 +1,6 @@
 # Harness Preset Registry Implementation Plan
 
-> Compatibility note: `~/.agent-forge/` remains the internal persistent data root so existing Harness templates stay available after the AgentPalette rename.
+> Harness templates use the AgentPalette user data root: `~/.agentpalette/`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -17,7 +17,7 @@
 - `AGENTS.md` and `docs/harness.toml` are the only hard-required files.
 - `work_type` and `created_from_preset` are immutable after creation; all template content files remain editable, addable, and deletable.
 - The normal creation, import, extraction, and duplicate flows generate IDs in Rust; the UI must not request an ID.
-- New template IDs use UUID v4 and are directory names beneath `~/.agent-forge/harnesses/`.
+- New template IDs use UUID v4 and are directory names beneath `~/.agentpalette/harnesses/`.
 - Health checks remain advisory and must not modify user files.
 
 ---

@@ -1,6 +1,6 @@
 # AgentPalette GitHub Preview Release Implementation Plan
 
-> Compatibility note: the Tauri identifier remains `com.lemon.agentforge` so the renamed application upgrades the existing installation and continues using its app-data directory.
+> The Tauri identifier is `com.lemon.agentpalette`, matching the AgentPalette product name.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Version remains exactly `0.1.0`; release tag is exactly `v0.1.0`.
-- Product identifier is exactly `com.lemon.agentforge`; author is exactly `Aimny2020`.
+- Product identifier is exactly `com.lemon.agentpalette`; author is exactly `Aimny2020`.
 - Build only macOS ARM64, macOS x64, and Windows x64.
 - Produce only macOS DMG and Windows NSIS `.exe` installers.
 - macOS uses ad-hoc signing; Windows remains unsigned.
@@ -85,7 +85,7 @@ Expected: whitespace and wrapping changes only in `skill_service.rs`.
 
 - [ ] **Step 2: Update stable package metadata**
 
-Set Cargo authors to `Aimny2020`; set Tauri identifier to `com.lemon.agentforge`. Replace common bundle target `all` with an empty platform-neutral target list only if accepted by the schema; otherwise omit `targets` and make every release command pass an explicit `--bundles` value.
+Set Cargo authors to `Aimny2020`; set Tauri identifier to `com.lemon.agentpalette`. Replace common bundle target `all` with an empty platform-neutral target list only if accepted by the schema; otherwise omit `targets` and make every release command pass an explicit `--bundles` value.
 
 - [ ] **Step 3: Configure explicit CSP**
 

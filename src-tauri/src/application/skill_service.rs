@@ -15,9 +15,7 @@ use crate::domain::skill::{
     SkillUpdate, SourceKind, UpdateStatus,
 };
 
-// This legacy directory is a persistent user-data contract; retaining it prevents upgrades from
-// presenting an empty skill catalog after the product rename.
-const LEGACY_GLOBAL_DATA_DIRECTORY: &str = ".agent-forge";
+const GLOBAL_DATA_DIRECTORY: &str = ".agentpalette";
 
 #[derive(Clone)]
 pub struct SkillService {
@@ -719,7 +717,7 @@ mod tests {
 impl SkillService {
     pub fn new(repo: Arc<dyn SkillRepository>) -> Self {
         let home = dirs::home_dir().expect("Failed to locate home directory");
-        let skills_dir = home.join(LEGACY_GLOBAL_DATA_DIRECTORY).join("skills");
+        let skills_dir = home.join(GLOBAL_DATA_DIRECTORY).join("skills");
         if !skills_dir.exists() {
             fs::create_dir_all(&skills_dir).expect("Failed to create skills directory");
         }

@@ -1,6 +1,6 @@
 # AgentPalette Foundation Implementation Plan
 
-> Compatibility note: `com.lemon.agentforge` and `agentforge.db` remain the internal upgrade identity and database filename so existing installations keep their data after the AgentPalette rename.
+> The application identity is `com.lemon.agentpalette` and its database filename is `agentpalette.db`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -120,7 +120,7 @@ Define `DatabasePort::status()` and `SystemInfoPort::{version, platform}`. Imple
 
 - [ ] **Step 4: Implement SQLite initialization and migration**
 
-Create `projects`, `task_runs`, and `_migrations` tables in `001_initial.sql`. Open `${app_data_dir}/agentforge.db`, enable foreign keys and WAL, and apply the migration once in a transaction.
+Create `projects`, `task_runs`, and `_migrations` tables in `001_initial.sql`. Open `${app_data_dir}/agentpalette.db`, enable foreign keys and WAL, and apply the migration once in a transaction.
 
 - [ ] **Step 5: Implement stable IPC error mapping and command**
 

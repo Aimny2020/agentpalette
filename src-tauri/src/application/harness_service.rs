@@ -15,8 +15,7 @@ use crate::domain::harness_presets::{
 };
 use crate::domain::ports::{HarnessRepository, SkillRepository};
 
-// Harnesses remain in the pre-rename data directory so existing templates stay available.
-const LEGACY_GLOBAL_DATA_DIRECTORY: &str = ".agent-forge";
+const GLOBAL_DATA_DIRECTORY: &str = ".agentpalette";
 
 pub struct HarnessService {
     repo: Arc<dyn HarnessRepository>,
@@ -27,7 +26,7 @@ pub struct HarnessService {
 impl HarnessService {
     pub fn new(repo: Arc<dyn HarnessRepository>, project_repo: Arc<dyn SkillRepository>) -> Self {
         let home = dirs::home_dir().expect("Failed to locate home directory");
-        let harnesses_dir = home.join(LEGACY_GLOBAL_DATA_DIRECTORY).join("harnesses");
+        let harnesses_dir = home.join(GLOBAL_DATA_DIRECTORY).join("harnesses");
         if !harnesses_dir.exists() {
             fs::create_dir_all(&harnesses_dir).expect("Failed to create harnesses directory");
         }

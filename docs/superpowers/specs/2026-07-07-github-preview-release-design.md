@@ -1,6 +1,6 @@
 # AgentPalette GitHub 内部预览发布设计
 
-> 兼容性说明：Tauri identifier 保留为 `com.lemon.agentforge`，以便 AgentPalette 覆盖升级旧应用并继续访问原应用数据目录。
+> Tauri identifier 为 `com.lemon.agentpalette`，与 AgentPalette 产品名称保持一致。
 
 ## 目标
 
@@ -22,7 +22,7 @@ macOS 使用 ad-hoc signing，Windows 保持未签名。替代方案是立即配
 - 产品名：`AgentPalette`
 - 首发版本：`0.1.0`
 - Git tag：`v0.1.0`
-- Tauri identifier：`com.lemon.agentforge`
+- Tauri identifier：`com.lemon.agentpalette`
 - 作者：`Aimny2020`
 - 许可证：私有预览阶段不添加 LICENSE，README 明确“未授权公开分发”
 

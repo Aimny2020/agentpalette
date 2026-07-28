@@ -29,8 +29,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      // Preserve the pre-rename key so an upgrade does not reset the user's saved theme.
-      name: 'agentforge-theme',
+      name: 'agentpalette-theme',
       partialize: ({ theme }) => ({ theme }),
       onRehydrateStorage: () => (state) => applyTheme(state?.theme ?? 'system'),
     },
