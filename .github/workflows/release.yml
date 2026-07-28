@@ -109,9 +109,20 @@ jobs:
           tagName: v__VERSION__
           releaseName: AgentPalette v__VERSION__
           releaseBody: |
-            AgentPalette 正式发布。
+            ## What's new
 
-            当前 Windows 安装包未签名，macOS 安装包使用 ad-hoc signing。安装前请阅读 README.md 中的安全提示。
+            - English display language, including English Harness templates.
+            - Standardized AgentPalette local storage and application identity.
+            - [Full changelog](https://github.com/Aimny2020/agentpalette/blob/v__VERSION__/CHANGELOG.md)
+
+            ## 更新内容
+
+            - 新增英语界面语言与英文 Harness 模板。
+            - 统一 AgentPalette 的本地存储和应用标识。
+            - [完整中文变更记录](https://github.com/Aimny2020/agentpalette/blob/v__VERSION__/CHANGELOG.zh-CN.md)
+
+            Windows installers are currently unsigned; macOS installers use ad-hoc signing. Read the security notes in the README before installing.
+            当前 Windows 安装包未签名，macOS 安装包使用 ad-hoc signing。安装前请阅读 README 中的安全提示。
           releaseDraft: false
           prerelease: false
           uploadUpdaterJson: false

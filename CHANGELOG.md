@@ -1,58 +1,73 @@
 # Changelog
 
-本文件记录 AgentPalette 的重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+English | [简体中文](./CHANGELOG.zh-CN.md)
+
+All notable changes to AgentPalette are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### 计划
+### Planned
 
-- 完成内部预览安装验证后评估 Linux 构建、正式代码签名和自动更新。
+- Evaluate Linux builds, production code signing, and automatic updates after internal installer validation.
+
+## [1.1.0] - 2026-07-28
+
+### Added
+
+- English user interface and a display-language preference for system default, Simplified Chinese, or English. Changes apply immediately and are stored locally.
+- English-language support and template content for global Harness templates and project Harness workflows.
+- English README and changelog, with language-matched documentation screenshots.
+
+### Changed
+
+- Standardized the AgentPalette application identifier, database file, global Skills and Harness data directories, and theme storage key.
+- GitHub Releases now use bilingual English and Simplified Chinese release notes.
 
 ## [1.0.0] - 2026-07-21
 
-### 新增
+### Added
 
-- 公开发布 AgentPalette，并提供 macOS（Apple Silicon、Intel）与 Windows x64 安装包。
-- 项目管理、本机 Agent 检测与维护、全局 Skills 管理、全局 Harness 模板管理，以及项目级 Skills 与 Harness 配置。
-- 平台启动偏好、主题设置及项目内启动本机 Agent 的工作流。
+- Public release of AgentPalette with macOS installers for Apple Silicon and Intel, plus a Windows x64 installer.
+- Project management, local Agent detection and maintenance, global Skills management, global Harness template management, and project-level Skills and Harness configuration.
+- Platform launch preferences, appearance settings, and workflows for starting local Agents inside a project.
 
-### 变更
+### Changed
 
-- 项目许可证调整为 Apache License 2.0，并新增贡献与品牌使用说明。
-- GitHub tag 发布流程调整为创建公开正式 Release。
+- Changed the project license to Apache License 2.0 and added contribution and brand-usage guidance.
+- Changed the GitHub tag workflow to create public final Releases.
 
-### 限制
+### Limitations
 
-- macOS 安装包使用 ad-hoc signing，尚未完成 Apple notarization；Windows 安装包尚未进行代码签名。
-- 暂不提供 Linux、MSI、移动端和自动更新支持。
+- macOS installers use ad-hoc signing and are not Apple-notarized; Windows installers are unsigned.
+- Linux, MSI, mobile installers, and automatic updates are not currently available.
 
 ## [0.2.1] - 2026-07-13
 
-### 变更
+### Changed
 
-- 改进项目 Harness 的导航、编辑布局、文件扫描范围与切换状态管理。
+- Improved project Harness navigation, editing layout, file scanning scope, and switching-state management.
 
 ## [0.1.0] - 2026-07-07
 
-### 新增
+### Added
 
-- 基于 Tauri v2、React、TypeScript 和 Rust 的桌面应用基础架构。
-- 项目导航、主题切换、共享 UI 状态和页面框架。
-- SQLite 迁移、领域端口、应用服务和类型化 Tauri IPC。
-- 本地技能与技能包扫描、Markdown 元数据解析及可执行内容风险检测。
-- 本地目录与 Git 来源的技能导入检查、来源记录和信任状态展示。
-- 技能详情、技能包成员展示及带依赖保护的删除确认流程。
-- Vitest 前端测试、Rust 单元测试和 Clippy 检查。
-- GitHub CI 与 tag 驱动的 macOS/Windows Draft Release 流程。
+- Initial desktop architecture based on Tauri v2, React, TypeScript, and Rust.
+- Project navigation, appearance switching, shared UI state, and the application shell.
+- SQLite migrations, domain ports, application services, and typed Tauri IPC.
+- Local Skill and Skill-pack scanning, Markdown metadata parsing, and executable-content risk detection.
+- Import inspection for local directories and Git sources, provenance records, and trust-state display.
+- Skill details, Skill-pack member display, and dependency-protected deletion confirmation.
+- Vitest frontend tests, Rust unit tests, Clippy checks, and a tag-driven macOS/Windows Release workflow.
 
-### 限制
+### Limitations
 
-- 本版本仅供私有内部预览，未授权公开分发。
-- macOS 仅使用 ad-hoc signing，未进行 notarization。
-- Windows 安装包未签名。
-- 暂不提供 Linux、MSI、移动端和自动更新支持。
+- This version was for private internal preview only and was not authorized for public distribution.
+- macOS used ad-hoc signing and was not notarized.
+- Windows installers were unsigned.
+- Linux, MSI, mobile installers, and automatic updates were not available.
 
-[Unreleased]: https://github.com/Aimny2020/agentpalette/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Aimny2020/agentpalette/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Aimny2020/agentpalette/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Aimny2020/agentpalette/releases/tag/v1.0.0
 [0.2.1]: https://github.com/Aimny2020/agentpalette/releases/tag/v0.2.1
 [0.1.0]: https://github.com/Aimny2020/agentpalette/releases/tag/v0.1.0
