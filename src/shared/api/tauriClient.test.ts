@@ -14,10 +14,14 @@ import {
   getCodeWorkModules,
   getCodeWorkSharedFiles,
   getHarnessPresets,
+  getGitEnvironment,
   getHealth,
   getLaunchPreferences,
   getLocalAgents,
+  getNetworkPreferences,
   inspectSkillImport,
+  saveNetworkPreferences,
+  testGitConnection,
   trustSkill,
   updateSkill,
   saveLaunchPreferences,
@@ -87,6 +91,24 @@ describe('tauriClient', () => {
       source: 'https://github.com/example/pack',
       importType: 'git',
     });
+  });
+
+  it('uses network preference and Git environment commands', async () => {
+    invokeMock.mockResolvedValue({ gitProxyMode: 'system', gitProxyUrl: '' });
+    await expect(getNetworkPreferences()).resolves.toEqual({ gitProxyMode: 'system', gitProxyUrl: '' });
+    expect(invokeMock).toHaveBeenLastCalledWith('get_network_preferences');
+
+    const preferences = { gitProxyMode: 'manual' as const, gitProxyUrl: 'http://127.0.0.1:7890' };
+    await saveNetworkPreferences(preferences);
+    expect(invokeMock).toHaveBeenLastCalledWith('save_network_preferences', { preferences });
+
+    invokeMock.mockResolvedValue({ available: true });
+    await getGitEnvironment();
+    expect(invokeMock).toHaveBeenLastCalledWith('get_git_environment');
+
+    invokeMock.mockResolvedValue({ success: true, elapsedMs: 12 });
+    await testGitConnection();
+    expect(invokeMock).toHaveBeenLastCalledWith('test_git_connection');
   });
 
   it('loads the backend-owned Harness preset registry', async () => {

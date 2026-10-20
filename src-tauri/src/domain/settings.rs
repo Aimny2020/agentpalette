@@ -25,3 +25,23 @@ impl Default for LaunchPreferences {
         }
     }
 }
+
+pub const GIT_PROXY_MODE_SYSTEM: &str = "system";
+pub const GIT_PROXY_MODE_DIRECT: &str = "direct";
+pub const GIT_PROXY_MODE_MANUAL: &str = "manual";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkPreferences {
+    pub git_proxy_mode: String,
+    pub git_proxy_url: String,
+}
+
+impl Default for NetworkPreferences {
+    fn default() -> Self {
+        Self {
+            git_proxy_mode: GIT_PROXY_MODE_SYSTEM.into(),
+            git_proxy_url: String::new(),
+        }
+    }
+}

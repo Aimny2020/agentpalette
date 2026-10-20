@@ -1,12 +1,67 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Package, X, Folder, GitBranch } from 'lucide-react';
-import { inspectSkillImport } from '../../../shared/api/tauriClient';
-import type { ImportInspection } from '../../../shared/api/types';
+import { useQuery } from '@tanstack/react-query';
+import { AppError, getGitEnvironment, inspectSkillImport } from '../../../shared/api/tauriClient';
+import type {
+  GitEnvironmentReport,
+  GitProxySource,
+  ImportInspection,
+} from '../../../shared/api/types';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
   onClose: () => void;
   onImport: (source: string, type: 'folder' | 'git') => void;
+}
+
+const proxySourceKeys: Record<GitProxySource, string> = {
+  manual: 'skills.proxySourceManual',
+  environment: 'skills.proxySourceEnvironment',
+  system: 'skills.proxySourceSystem',
+  none: 'skills.proxySourceNone',
+  pac: 'skills.proxySourcePac',
+};
+
+function GitEnvironmentHint({
+  report,
+  loading,
+}: {
+  report?: GitEnvironmentReport;
+  loading: boolean;
+}) {
+  const { t } = useTranslation();
+  if (loading) return <p className="muted-copy">{t('skills.gitEnvChecking')}</p>;
+  if (!report) return null;
+  if (!report.available) {
+    return (
+      <p className="import-warning">
+        <AlertTriangle size={14} />
+        {t('skills.gitMissing')}{' '}
+        <a href="https://git-scm.com/download/win" target="_blank" rel="noreferrer">
+          {t('skills.gitInstall')}
+        </a>
+      </p>
+    );
+  }
+  if (report.proxy) {
+    return (
+      <p className="muted-copy">
+        {t('skills.gitProxy', {
+          proxy: report.proxy,
+          source: t(proxySourceKeys[report.proxySource]),
+        })}
+      </p>
+    );
+  }
+  if (report.proxySource === 'pac') {
+    return (
+      <p className="import-warning">
+        <AlertTriangle size={14} />
+        {t('skills.gitPacWarning')}
+      </p>
+    );
+  }
+  return <p className="muted-copy">{t('skills.gitDirect')}</p>;
 }
 
 export function ImportSkillModal({ onClose, onImport }: Props) {
@@ -16,6 +71,20 @@ export function ImportSkillModal({ onClose, onImport }: Props) {
   const [inspection, setInspection] = useState<ImportInspection | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   const [error, setError] = useState('');
+  const gitEnvironment = useQuery({
+    queryKey: ['gitEnvironment'],
+    queryFn: getGitEnvironment,
+    enabled: mode === 'git',
+  });
+
+  const describeError = (inspectionError: unknown) => {
+    if (inspectionError instanceof AppError) {
+      return inspectionError.details
+        ? `${inspectionError.message}\n${inspectionError.details}`
+        : inspectionError.message;
+    }
+    return inspectionError instanceof Error ? inspectionError.message : t('skills.inspectFailed');
+  };
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +95,7 @@ export function ImportSkillModal({ onClose, onImport }: Props) {
       try {
         setInspection(await inspectSkillImport(source.trim(), mode));
       } catch (inspectionError) {
-        setError(inspectionError instanceof Error ? inspectionError.message : t('skills.inspectFailed'));
+        setError(describeError(inspectionError));
       } finally {
         setIsInspecting(false);
       }
@@ -89,14 +158,18 @@ export function ImportSkillModal({ onClose, onImport }: Props) {
             <div className="form-group">
               <label>{t('skills.gitUrl')}</label>
               <input
-                placeholder="https://github.com/org/my-skill-repo.git"
+                placeholder="https://github.com/org/my-skill-repo"
                 value={source}
                 onChange={(e) => { setSource(e.target.value); resetInspection(); }}
                 required
               />
+              <GitEnvironmentHint
+                report={gitEnvironment.data}
+                loading={gitEnvironment.isLoading}
+              />
             </div>
           )}
-          {error && <p className="import-error">{error}</p>}
+          {error && <p className="import-error" style={{ whiteSpace: 'pre-line' }}>{error}</p>}
           {inspection && (
             <div className="import-inspection">
               <div className="import-inspection__title"><Package size={16} /><strong>{inspection.name}</strong></div>

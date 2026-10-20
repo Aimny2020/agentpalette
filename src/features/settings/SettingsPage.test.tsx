@@ -4,17 +4,46 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, Link, RouterProvider } from 'react-router-dom';
 
-const { getHealthMock, getLaunchPreferencesMock, saveLaunchPreferencesMock } = vi.hoisted(() => ({
+const {
+  getHealthMock,
+  getLaunchPreferencesMock,
+  saveLaunchPreferencesMock,
+  getNetworkPreferencesMock,
+  saveNetworkPreferencesMock,
+  getGitEnvironmentMock,
+  testGitConnectionMock,
+} = vi.hoisted(() => ({
   getHealthMock: vi.fn(),
   getLaunchPreferencesMock: vi.fn(),
   saveLaunchPreferencesMock: vi.fn(),
+  getNetworkPreferencesMock: vi.fn(),
+  saveNetworkPreferencesMock: vi.fn(),
+  getGitEnvironmentMock: vi.fn(),
+  testGitConnectionMock: vi.fn(),
 }));
 
-vi.mock('../../shared/api/tauriClient', () => ({
-  getHealth: getHealthMock,
-  getLaunchPreferences: getLaunchPreferencesMock,
-  saveLaunchPreferences: saveLaunchPreferencesMock,
-}));
+vi.mock('../../shared/api/tauriClient', () => {
+  class MockAppError extends Error {
+    constructor(
+      public readonly code: string,
+      message: string,
+      public readonly details?: string,
+    ) {
+      super(message);
+      this.name = 'AppError';
+    }
+  }
+  return {
+    AppError: MockAppError,
+    getHealth: getHealthMock,
+    getLaunchPreferences: getLaunchPreferencesMock,
+    saveLaunchPreferences: saveLaunchPreferencesMock,
+    getNetworkPreferences: getNetworkPreferencesMock,
+    saveNetworkPreferences: saveNetworkPreferencesMock,
+    getGitEnvironment: getGitEnvironmentMock,
+    testGitConnection: testGitConnectionMock,
+  };
+});
 
 import { useThemeStore } from '../../shared/theme/themeStore';
 import i18n from '../../shared/i18n/i18n';
@@ -50,6 +79,23 @@ describe('SettingsPage', () => {
     getHealthMock.mockResolvedValue({ version: '0.2.1', platform: 'macos', database: 'ready', ready: true });
     getLaunchPreferencesMock.mockResolvedValue(preferences);
     saveLaunchPreferencesMock.mockImplementation(async (value) => value);
+    getNetworkPreferencesMock.mockResolvedValue({ gitProxyMode: 'system', gitProxyUrl: '' });
+    saveNetworkPreferencesMock.mockImplementation(async (value) => value);
+    getGitEnvironmentMock.mockResolvedValue({
+      available: true,
+      version: '2.45.1.windows.1',
+      executable: 'C:\\Program Files\\Git\\cmd\\git.exe',
+      proxy: 'http://127.0.0.1:7890',
+      proxySource: 'system',
+      pacDetected: false,
+      error: null,
+    });
+    testGitConnectionMock.mockResolvedValue({
+      success: true,
+      elapsedMs: 42,
+      proxy: 'http://127.0.0.1:7890',
+      message: null,
+    });
   });
 
   it('opens basic settings without loading platform preferences', async () => {
@@ -101,6 +147,33 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('0.2.1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '检查更新（暂未开放）' })).toBeDisabled();
     expect(getLaunchPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the resolved Git proxy and saves a manual proxy', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: '网络与 Git' }));
+    expect(await screen.findByText(/http:\/\/127\.0\.0\.1:7890（Windows 系统代理）/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /手动代理/ }));
+    await user.type(screen.getByLabelText(/代理地址/), '127.0.0.1:7890');
+    await user.click(screen.getByRole('button', { name: '保存网络设置' }));
+
+    expect(saveNetworkPreferencesMock).toHaveBeenCalledWith(
+      { gitProxyMode: 'manual', gitProxyUrl: '127.0.0.1:7890' },
+      expect.anything(),
+    );
+  });
+
+  it('runs the GitHub connection test from the network settings', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: '网络与 Git' }));
+    await user.click(await screen.findByRole('button', { name: '测试 GitHub 连接' }));
+
+    expect(await screen.findByText('连接成功（42 ms）')).toBeInTheDocument();
   });
 
   it('keeps launch drafts across tabs and prompts before app navigation', async () => {

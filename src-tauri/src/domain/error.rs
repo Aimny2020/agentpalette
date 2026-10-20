@@ -6,6 +6,8 @@ pub enum DomainError {
     AppDataDirectory,
     #[error("operation unavailable: {0}")]
     Operation(String),
+    #[error("git operation failed: {0}")]
+    Git(String),
 }
 
 pub type DomainResult<T> = Result<T, DomainError>;

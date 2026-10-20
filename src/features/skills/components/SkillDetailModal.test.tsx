@@ -32,7 +32,13 @@ const mockSkillPack: Skill = {
       html_content: '<div>Detail document of sub skill two</div>',
     },
   ],
-  source: { kind: 'git', url: 'https://github.com/example/taste-skill', installed_commit: 'abcdef123' },
+  source: {
+    kind: 'git',
+    url: 'https://github.com/example/taste-skill',
+    tracked_ref: 'v1.2.0',
+    installed_commit: 'abcdef123',
+    last_checked_at: '2026-07-06T00:00:00Z',
+  },
   update_status: 'current',
   has_executable_content: false,
   trusted: true,
@@ -98,6 +104,51 @@ describe('SkillDetailModal', () => {
     expect(screen.getByText('Welcome to taste-skill package documentation.')).toBeInTheDocument();
     expect(screen.getByText('Sub Skill One')).toBeInTheDocument();
     expect(screen.queryByText(/返回/)).not.toBeInTheDocument();
+  });
+
+  it('shows the Git source provenance', () => {
+    render(
+      <SkillDetailModal
+        skill={mockSkillPack}
+        categories={mockCategories}
+        onClose={vi.fn()}
+        onUpdate={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Skill source')).toBeInTheDocument();
+    expect(screen.getByText('GitHub')).toBeInTheDocument();
+    expect(screen.getByText('Author')).toBeInTheDocument();
+    expect(screen.getByText('Antigravity Team')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'github.com/example/taste-skill' })).toHaveAttribute(
+      'href',
+      'https://github.com/example/taste-skill',
+    );
+    expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+    expect(screen.getByText('abcdef1')).toBeInTheDocument();
+    expect(screen.getByText('Last checked')).toBeInTheDocument();
+  });
+
+  it('explains that local imports cannot be updated automatically', () => {
+    const localSkill = {
+      ...mockSkillPack,
+      source: { kind: 'local' as const },
+      update_status: 'not_applicable' as const,
+    };
+
+    render(
+      <SkillDetailModal
+        skill={localSkill}
+        categories={mockCategories}
+        onClose={vi.fn()}
+        onUpdate={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Local')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Automatic updates are unavailable/),
+    ).toBeInTheDocument();
   });
 
   it('renders "信任此版本" button when untrusted and "已信任此版本" badge when trusted', () => {

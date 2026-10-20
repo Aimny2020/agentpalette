@@ -367,4 +367,67 @@ mod tests {
 
         assert!(!discovered.has_executable_content);
     }
+
+    #[test]
+    fn reads_version_from_nested_metadata_for_standalone_skills() {
+        let fixture = Fixture::new();
+        let directory = fixture.path.join("oil-ui");
+        fs::create_dir_all(&directory).unwrap();
+        fs::write(
+            directory.join("SKILL.md"),
+            "---\nname: Oil UI\ndescription: UI design skill\nmetadata:\n  version: \"0.23.8\"\n---\n\n# Oil UI\n",
+        )
+        .unwrap();
+
+        let discovered = scan_skill_root("oil-ui", &fixture.path).unwrap();
+
+        assert_eq!(discovered.kind.as_str(), "standalone");
+        assert_eq!(discovered.metadata.version.as_deref(), Some("0.23.8"));
+    }
+
+    #[test]
+    fn reads_version_from_nested_metadata_for_pack_members() {
+        let fixture = Fixture::new();
+        fixture.skill("skills/alpha", "Alpha");
+        let beta = fixture.path.join("skills/beta");
+        fs::create_dir_all(&beta).unwrap();
+        fs::write(
+            beta.join("SKILL.md"),
+            "---\nname: Beta\ndescription: Beta skill\nmetadata:\n  version: \"1.2.1\"\n---\n\n# Beta\n",
+        )
+        .unwrap();
+
+        let discovered = scan_skill_root("pack", &fixture.path).unwrap();
+        let beta_member = discovered
+            .members
+            .iter()
+            .find(|member| member.metadata.name == "Beta")
+            .unwrap();
+
+        assert_eq!(beta_member.metadata.version.as_deref(), Some("1.2.1"));
+    }
+
+    #[test]
+    fn pack_manifest_version_takes_precedence_over_root_skill_version() {
+        let fixture = Fixture::new();
+        fixture.skill("skills/alpha", "Alpha");
+        fixture.skill("skills/beta", "Beta");
+        fs::write(
+            fixture.path.join("SKILL.md"),
+            "---\nname: Root\nversion: 9.9.9\ndescription: root\n---\n\n# Root\n",
+        )
+        .unwrap();
+        let plugin_dir = fixture.path.join(".claude-plugin");
+        fs::create_dir_all(&plugin_dir).unwrap();
+        fs::write(
+            plugin_dir.join("plugin.json"),
+            r#"{"name":"Pack","version":"1.0.0"}"#,
+        )
+        .unwrap();
+
+        let discovered = scan_skill_root("pack", &fixture.path).unwrap();
+
+        assert_eq!(discovered.metadata.name, "Pack");
+        assert_eq!(discovered.metadata.version.as_deref(), Some("1.0.0"));
+    }
 }

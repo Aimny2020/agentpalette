@@ -5,6 +5,9 @@ import type {
   CommandFailure,
   HealthReport,
   LaunchPreferences,
+  NetworkPreferences,
+  GitEnvironmentReport,
+  GitConnectionReport,
   LocalAgent,
   AgentMaintenanceAction,
   AgentMaintenancePlan,
@@ -84,6 +87,38 @@ export async function getLaunchPreferences(): Promise<LaunchPreferences> {
 export async function saveLaunchPreferences(preferences: LaunchPreferences): Promise<LaunchPreferences> {
   try {
     return await invoke<LaunchPreferences>('save_launch_preferences', { preferences });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getNetworkPreferences(): Promise<NetworkPreferences> {
+  try {
+    return await invoke<NetworkPreferences>('get_network_preferences');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function saveNetworkPreferences(preferences: NetworkPreferences): Promise<NetworkPreferences> {
+  try {
+    return await invoke<NetworkPreferences>('save_network_preferences', { preferences });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function getGitEnvironment(): Promise<GitEnvironmentReport> {
+  try {
+    return await invoke<GitEnvironmentReport>('get_git_environment');
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function testGitConnection(): Promise<GitConnectionReport> {
+  try {
+    return await invoke<GitConnectionReport>('test_git_connection');
   } catch (error) {
     throw normalizeError(error);
   }

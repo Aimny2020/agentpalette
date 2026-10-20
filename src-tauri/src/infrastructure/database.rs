@@ -24,6 +24,8 @@ const PROJECT_HARNESSES_MIGRATION: &str =
     include_str!("../../migrations/007_project_harnesses.sql");
 const LAUNCH_PREFERENCES_MIGRATION: &str =
     include_str!("../../migrations/008_launch_preferences.sql");
+const NETWORK_PREFERENCES_MIGRATION: &str =
+    include_str!("../../migrations/009_network_preferences.sql");
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,
@@ -86,6 +88,9 @@ impl SqliteDatabase {
             .map_err(database_error)?;
         connection
             .execute_batch(LAUNCH_PREFERENCES_MIGRATION)
+            .map_err(database_error)?;
+        connection
+            .execute_batch(NETWORK_PREFERENCES_MIGRATION)
             .map_err(database_error)?;
         Ok(Self {
             connection: Mutex::new(connection),
@@ -179,6 +184,53 @@ impl SettingsRepository for SqliteDatabase {
                     preferences.check_environment as i64,
                     preferences.check_permissions as i64,
                     preferences.allow_copy_command_fallback as i64,
+                    chrono::Utc::now().to_rfc3339(),
+                ],
+            )
+            .map_err(database_error)?;
+        Ok(())
+    }
+
+    fn get_network_preferences(&self) -> DomainResult<crate::domain::settings::NetworkPreferences> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .query_row(
+                "SELECT git_proxy_mode, git_proxy_url FROM network_preferences WHERE id = 1",
+                [],
+                |row| {
+                    Ok(crate::domain::settings::NetworkPreferences {
+                        git_proxy_mode: row.get(0)?,
+                        git_proxy_url: row.get(1)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(database_error)
+            .map(|preferences| preferences.unwrap_or_default())
+    }
+
+    fn save_network_preferences(
+        &self,
+        preferences: &crate::domain::settings::NetworkPreferences,
+    ) -> DomainResult<()> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute(
+                "INSERT INTO network_preferences (id, git_proxy_mode, git_proxy_url, updated_at)
+                 VALUES (1, ?1, ?2, ?3)
+                 ON CONFLICT(id) DO UPDATE SET
+                    git_proxy_mode = excluded.git_proxy_mode,
+                    git_proxy_url = excluded.git_proxy_url,
+                    updated_at = excluded.updated_at",
+                rusqlite::params![
+                    preferences.git_proxy_mode,
+                    preferences.git_proxy_url,
                     chrono::Utc::now().to_rfc3339(),
                 ],
             )
@@ -1010,6 +1062,7 @@ mod tests {
         assert!(database.has_table("project_harnesses").unwrap());
         assert!(database.has_table("project_harness_files").unwrap());
         assert!(database.has_table("launch_preferences").unwrap());
+        assert!(database.has_table("network_preferences").unwrap());
     }
 
     #[test]
@@ -1030,6 +1083,21 @@ mod tests {
         };
         database.save_launch_preferences(&preferences).unwrap();
         assert_eq!(database.get_launch_preferences().unwrap(), preferences);
+    }
+
+    #[test]
+    fn network_preferences_default_and_round_trip() {
+        let database = SqliteDatabase::open_in_memory().unwrap();
+        let defaults = database.get_network_preferences().unwrap();
+        assert_eq!(defaults.git_proxy_mode, "system");
+        assert!(defaults.git_proxy_url.is_empty());
+
+        let preferences = crate::domain::settings::NetworkPreferences {
+            git_proxy_mode: "manual".into(),
+            git_proxy_url: "http://127.0.0.1:7890".into(),
+        };
+        database.save_network_preferences(&preferences).unwrap();
+        assert_eq!(database.get_network_preferences().unwrap(), preferences);
     }
 
     #[test]

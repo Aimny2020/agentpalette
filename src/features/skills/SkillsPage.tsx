@@ -23,7 +23,7 @@ import { SkillCard } from './components/SkillCard';
 import { SkillDetailModal } from './components/SkillDetailModal';
 import { ImportSkillModal } from './components/ImportSkillModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
-import { Skill, SkillMember } from '../../shared/api/types';
+import { Skill } from '../../shared/api/types';
 import { projectCatalog } from './skillCatalog';
 import './components/skills.css';
 
@@ -32,6 +32,7 @@ export function SkillsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'git' | 'local'>('all');
   const [activeDetailId, setActiveDetailId] = useState<{ skillId: string; memberId?: string } | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
@@ -64,7 +65,12 @@ export function SkillsPage() {
 
   const { data: skillUpdates = [], refetch: refetchUpdates, isFetching: updatesLoading } = useQuery({
     queryKey: ['skill-updates'],
-    queryFn: checkSkillUpdates,
+    queryFn: async () => {
+      const updates = await checkSkillUpdates();
+      void queryClient.invalidateQueries({ queryKey: ['skills'] });
+      void queryClient.invalidateQueries({ queryKey: ['skill-detail'] });
+      return updates;
+    },
     staleTime: 5 * 60 * 1000,
     enabled: false,
   });
@@ -85,13 +91,6 @@ export function SkillsPage() {
     onSuccess: (_, skillId) => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
       queryClient.invalidateQueries({ queryKey: ['skill-detail', skillId] });
-    },
-    onError: (error, skillId) => {
-      if (error instanceof AppError && error.details?.includes('enabled in projects')) {
-        if (confirm(t('skills.occupiedDetail'))) {
-          deleteEverywhereMut.mutate(skillId);
-        }
-      }
     },
   });
 
@@ -161,6 +160,14 @@ export function SkillsPage() {
   const importSkillMut = useMutation({
     mutationFn: ({ source, type }: { source: string; type: 'folder' | 'git' }) => importSkill(source, type),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['skills'] }),
+    onError: (error) => {
+      const details = error instanceof AppError
+        ? error.details ?? error.message
+        : error instanceof Error
+          ? error.message
+          : String(error);
+      alert(t('skills.importFailed', { details }));
+    },
   });
 
   const createCatMut = useMutation({
@@ -205,7 +212,16 @@ export function SkillsPage() {
   });
   skillsCountMap['uncategorized'] = uncategorizedCount;
 
-  const catalogResults = projectCatalog(skills, search, selectedCategoryId);
+  const gitSkillCount = skills.filter((skill) => skill.source.kind === 'git').length;
+  const localSkillCount = skills.length - gitSkillCount;
+  const sourceFilters: Array<{ id: 'all' | 'git' | 'local'; label: string; count: number }> = [
+    { id: 'all', label: t('skills.sourceAll'), count: skills.length },
+    { id: 'git', label: t('skills.sourceGit'), count: gitSkillCount },
+    { id: 'local', label: t('skills.sourceLocal'), count: localSkillCount },
+  ];
+  const catalogResults = projectCatalog(skills, search, selectedCategoryId).filter(
+    (result) => sourceFilter === 'all' || result.skill.source.kind === sourceFilter,
+  );
 
   const getCategoryName = (catId?: string) => {
     if (!catId) return t('skills.uncategorized');
@@ -242,8 +258,31 @@ export function SkillsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <div
+              className="skills-source-filter"
+              role="group"
+              aria-label={t('skills.sourceFilterLabel')}
+            >
+              {sourceFilters.map((filter) => (
+                <button
+                  type="button"
+                  key={filter.id}
+                  className={sourceFilter === filter.id ? 'is-active' : undefined}
+                  aria-pressed={sourceFilter === filter.id}
+                  onClick={() => setSourceFilter(filter.id)}
+                >
+                  {filter.label}
+                  <span>{filter.count}</span>
+                </button>
+              ))}
+            </div>
             <div className="skills-toolbar__actions">
-              <button className="button button--secondary" onClick={() => refetchUpdates()} disabled={updatesLoading}>
+              <button
+                className="button button--secondary"
+                onClick={() => refetchUpdates()}
+                disabled={updatesLoading}
+                title={t('skills.checkUpdatesHint')}
+              >
                 <RefreshCw size={16} className={updatesLoading ? 'is-spinning' : ''} />
                 {t('skills.checkUpdates')}
               </button>

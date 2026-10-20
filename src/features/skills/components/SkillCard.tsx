@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Package, ShieldAlert, Trash2 } from 'lucide-react';
+import { Download, Folder, GitBranch, Package, ShieldAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Skill, SkillMember, SkillUpdateStatus } from '../../../shared/api/types';
 
@@ -25,6 +25,12 @@ export function SkillCard({
   const { t } = useTranslation();
   const metadata = member?.metadata ?? skill.metadata;
   const customDescription = member ? member.custom_description : skill.custom_description;
+  const isGit = skill.source.kind === 'git';
+  const sourceLabel = isGit
+    ? skill.source.url?.includes('github.com')
+      ? t('skills.githubSource')
+      : t('skills.gitRepositorySource')
+    : t('skills.localSource');
   return (
     <div className="skill-card" onClick={onOpenDetail}>
       <div className="skill-card-header">
@@ -69,8 +75,17 @@ export function SkillCard({
       </div>
       <div className="skill-card-footer">
         {metadata.version && <span className="version-badge">v{metadata.version}</span>}
-        {skill.source.kind === 'git' && <span>Git · {skill.source.installed_commit?.slice(0, 7) ?? '未知'}</span>}
-        {metadata.author && <span className="author-badge">by {metadata.author}</span>}
+        <span
+          className={`source-badge ${isGit ? 'source-badge--git' : 'source-badge--local'}`}
+          title={
+            isGit
+              ? skill.source.url ?? undefined
+              : t('skills.localSourceHint')
+          }
+        >
+          {isGit ? <GitBranch size={12} /> : <Folder size={12} />}
+          <span className="source-badge__text">{sourceLabel}</span>
+        </span>
       </div>
     </div>
   );

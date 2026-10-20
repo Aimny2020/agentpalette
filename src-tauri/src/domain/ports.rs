@@ -116,6 +116,12 @@ pub trait SettingsRepository: Send + Sync {
         &self,
         preferences: &crate::domain::settings::LaunchPreferences,
     ) -> DomainResult<()>;
+
+    fn get_network_preferences(&self) -> DomainResult<crate::domain::settings::NetworkPreferences>;
+    fn save_network_preferences(
+        &self,
+        preferences: &crate::domain::settings::NetworkPreferences,
+    ) -> DomainResult<()>;
 }
 
 #[cfg(test)]

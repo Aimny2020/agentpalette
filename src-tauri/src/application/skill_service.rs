@@ -14,6 +14,7 @@ use crate::domain::skill::{
     ImportInspection, Skill, SkillKind, SkillMember, SkillPackageRecord, SkillSourceInfo,
     SkillUpdate, SourceKind, UpdateStatus,
 };
+use crate::infrastructure::git_cli::{canonical_clone_url, GitOptions};
 
 const GLOBAL_DATA_DIRECTORY: &str = ".agentpalette";
 
@@ -35,8 +36,8 @@ mod tests {
     use crate::domain::skill::{Category, UpdateStatus, UserSkillMeta};
 
     use super::{
-        git_worktree_is_dirty, normalize_git_url, select_latest_stable_tag, trust_matches,
-        SkillService,
+        git_output, git_worktree_is_dirty, normalize_git_url, select_latest_stable_tag,
+        trust_matches, SkillService,
     };
 
     #[derive(Default)]
@@ -314,6 +315,76 @@ mod tests {
     }
 
     #[test]
+    fn ignores_file_mode_only_changes() {
+        let fixture = Fixture::new();
+        fixture.skill("repo", "Repo");
+        let repo = fixture.0.join("repo");
+        run_git(&repo, &["init"]);
+        run_git(
+            &repo,
+            &["config", "user.email", "agentpalette@example.test"],
+        );
+        run_git(&repo, &["config", "user.name", "AgentPalette Test"]);
+        run_git(&repo, &["config", "core.filemode", "true"]);
+        run_git(&repo, &["add", "."]);
+        run_git(&repo, &["commit", "-m", "initial"]);
+        run_git(&repo, &["update-index", "--chmod=+x", "SKILL.md"]);
+        run_git(&repo, &["commit", "-m", "mark executable"]);
+
+        // Refresh the mtime so the fast path cannot short-circuit, then verify
+        // that the executable-bit difference alone is not treated as dirty.
+        fs::write(
+            repo.join("SKILL.md"),
+            "---\nname: Repo\ndescription: Repo description\n---\n# Repo",
+        )
+        .unwrap();
+
+        assert!(!git_worktree_is_dirty(&repo).unwrap());
+    }
+
+    #[test]
+    fn restores_the_real_commit_after_a_false_dirty_record() {
+        let fixture = Fixture::new();
+        fixture.skill("example-repo", "Repo");
+        let repo = fixture.0.join("example-repo");
+        run_git(&repo, &["init"]);
+        run_git(
+            &repo,
+            &["config", "user.email", "agentpalette@example.test"],
+        );
+        run_git(&repo, &["config", "user.name", "AgentPalette Test"]);
+        run_git(&repo, &["add", "."]);
+        run_git(&repo, &["commit", "-m", "initial"]);
+        let actual_commit = git_output(&repo, &["rev-parse", "HEAD"]).unwrap();
+
+        let db =
+            Arc::new(crate::infrastructure::database::SqliteDatabase::open_in_memory().unwrap());
+        db.save_skill_package(&crate::domain::skill::SkillPackageRecord {
+            skill_id: "example-repo".into(),
+            source_kind: crate::domain::skill::SourceKind::Git,
+            source_url: Some("https://github.com/example/repo.git".into()),
+            normalized_source: Some("github.com/example/repo".into()),
+            tracked_ref: Some("main".into()),
+            installed_commit: Some("local-deadbeef".into()),
+            trusted_commit: None,
+            last_checked_at: Some("2026-07-06T00:00:00Z".into()),
+        })
+        .unwrap();
+
+        let service = SkillService::with_skills_dir(db, fixture.0.clone());
+        let skill = service.get_skill_detail("example-repo").unwrap().unwrap();
+
+        assert_eq!(
+            skill.source.installed_commit.as_deref(),
+            Some(actual_commit.as_str())
+        );
+        assert_eq!(
+            skill.source.last_checked_at.as_deref(),
+            Some("2026-07-06T00:00:00Z")
+        );
+    }
+
+    #[test]
     fn dirty_content_invalidates_commit_trust() {
         assert!(trust_matches(Some("abc"), Some("abc"), false));
         assert!(!trust_matches(Some("abc"), Some("abc"), true));
@@ -500,6 +571,31 @@ mod tests {
             Some("github.com/mattpocock/skills")
         );
         assert!(db.get_skill_package("skills").unwrap().is_none());
+    }
+
+    #[test]
+    #[ignore = "requires network access and a reachable GitHub endpoint"]
+    fn imports_a_github_pack_through_the_resolved_proxy() {
+        let fixture = Fixture::new();
+        let db =
+            Arc::new(crate::infrastructure::database::SqliteDatabase::open_in_memory().unwrap());
+        let service = SkillService::with_skills_dir(db, fixture.0.clone());
+        let options = crate::infrastructure::git_cli::GitOptions::resolve(
+            &crate::domain::settings::NetworkPreferences::default(),
+        )
+        .unwrap();
+
+        let id = service
+            .import_git_url("github.com/obra/superpowers", &options)
+            .unwrap();
+
+        assert_eq!(id, "obra-superpowers");
+        assert!(fixture.0.join("obra-superpowers/.git").exists());
+        assert!(service
+            .get_skills()
+            .unwrap()
+            .iter()
+            .any(|skill| skill.id == "obra-superpowers"));
     }
 
     #[test]
@@ -753,6 +849,17 @@ impl SkillService {
         if let Some(mut record) = self.repo.get_skill_package(skill_id)? {
             if dirty {
                 record.installed_commit = Some(local_revision(path));
+            } else if record.source_kind == SourceKind::Git
+                && record
+                    .installed_commit
+                    .as_deref()
+                    .map_or(true, |commit| commit.starts_with("local-"))
+            {
+                // Recover the real HEAD commit after a previous dirty scan stored a
+                // `local-*` content fingerprint.
+                if let Some(commit) = git_output(path, &["rev-parse", "HEAD"]) {
+                    record.installed_commit = Some(commit);
+                }
             }
             return Ok((record, dirty));
         }
@@ -848,6 +955,7 @@ impl SkillService {
                     url: record.source_url.clone(),
                     tracked_ref: record.tracked_ref.clone(),
                     installed_commit: record.installed_commit.clone(),
+                    last_checked_at: record.last_checked_at.clone(),
                 };
                 let update_status = if source.kind == SourceKind::Git {
                     if dirty {
@@ -929,6 +1037,7 @@ impl SkillService {
             url: record.source_url.clone(),
             tracked_ref: record.tracked_ref.clone(),
             installed_commit: record.installed_commit.clone(),
+            last_checked_at: record.last_checked_at.clone(),
         };
         let update_status = if source.kind == SourceKind::Git {
             if dirty {
@@ -983,28 +1092,29 @@ impl SkillService {
         Ok(id.to_string())
     }
 
-    pub fn inspect_import(
+    pub fn inspect_local_import(&self, source: &str) -> DomainResult<ImportInspection> {
+        let path = Path::new(source);
+        let id = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| DomainError::Database("Invalid folder name".into()))?;
+        let discovered = scan_skill_root(id, path)?;
+        Ok(inspection_from_discovered(
+            discovered,
+            None,
+            None,
+            id.to_string(),
+            None,
+        ))
+    }
+
+    pub fn inspect_git_import(
         &self,
         source: &str,
-        import_type: &str,
+        git: &GitOptions,
     ) -> DomainResult<ImportInspection> {
-        if import_type != "git" {
-            let path = Path::new(source);
-            let id = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .ok_or_else(|| DomainError::Database("Invalid folder name".into()))?;
-            let discovered = scan_skill_root(id, path)?;
-            return Ok(inspection_from_discovered(
-                discovered,
-                None,
-                None,
-                id.to_string(),
-                None,
-            ));
-        }
-
-        let normalized = normalize_git_url(source)?;
+        let clone_url = canonical_clone_url(source)?;
+        let normalized = normalize_git_url(&clone_url)?;
         if let Some(existing) = self.repo.find_skill_by_source(&normalized)? {
             return Ok(ImportInspection {
                 name: existing.clone(),
@@ -1019,32 +1129,29 @@ impl SkillService {
             });
         }
         let install_id = self.resolve_git_skill_id(&normalized)?;
-        let recommended_ref = latest_stable_tag(source);
+        let recommended_ref = latest_stable_tag(git, &clone_url);
         let staging =
             self.skills_dir
                 .join(format!(".{}-inspect-{}", install_id, uuid::Uuid::new_v4()));
-        let status = clone_repository(source, recommended_ref.as_deref(), &staging)?;
-        if !status.success() {
-            let _ = fs::remove_dir_all(&staging);
-            return Err(DomainError::Database(
-                "git clone command exited with error".into(),
-            ));
-        }
-        let result = scan_skill_root(&install_id, &staging).map(|discovered| {
-            inspection_from_discovered(
-                discovered,
-                recommended_ref,
-                None,
-                install_id,
-                Some(normalized),
-            )
-        });
+        let result = clone_repository(git, &clone_url, recommended_ref.as_deref(), &staging)
+            .and_then(|_| {
+                scan_skill_root(&install_id, &staging).map(|discovered| {
+                    inspection_from_discovered(
+                        discovered,
+                        recommended_ref.clone(),
+                        None,
+                        install_id.clone(),
+                        Some(normalized.clone()),
+                    )
+                })
+            });
         let _ = fs::remove_dir_all(&staging);
         result
     }
 
-    pub fn import_git_url(&self, url: &str) -> DomainResult<String> {
-        let normalized = normalize_git_url(url)?;
+    pub fn import_git_url(&self, url: &str, git: &GitOptions) -> DomainResult<String> {
+        let clone_url = canonical_clone_url(url)?;
+        let normalized = normalize_git_url(&clone_url)?;
         if let Some(existing) = self.repo.find_skill_by_source(&normalized)? {
             return Err(DomainError::Database(format!(
                 "Git source is already installed as {existing}"
@@ -1060,14 +1167,10 @@ impl SkillService {
         let staging =
             self.skills_dir
                 .join(format!(".{}-import-{}", install_id, uuid::Uuid::new_v4()));
-        let stable_tag = latest_stable_tag(url);
-        let status = clone_repository(url, stable_tag.as_deref(), &staging)?;
-
-        if !status.success() {
+        let stable_tag = latest_stable_tag(git, &clone_url);
+        if let Err(error) = clone_repository(git, &clone_url, stable_tag.as_deref(), &staging) {
             let _ = fs::remove_dir_all(&staging);
-            return Err(DomainError::Database(
-                "git clone command exited with error".into(),
-            ));
+            return Err(error);
         }
         if let Err(error) = scan_skill_root(&install_id, &staging) {
             let _ = fs::remove_dir_all(&staging);
@@ -1077,13 +1180,13 @@ impl SkillService {
         let source = git_source(&dest)
             .ok_or_else(|| DomainError::Database("Git metadata is unavailable".into()))?;
         let mut record = package_record(&install_id, &dest, &source);
-        record.source_url = Some(url.to_string());
+        record.source_url = Some(clone_url);
         record.normalized_source = Some(normalized);
         self.repo.save_skill_package(&record)?;
         Ok(install_id)
     }
 
-    pub fn check_skill_updates(&self) -> DomainResult<Vec<SkillUpdate>> {
+    pub fn check_skill_updates(&self, git: &GitOptions) -> DomainResult<Vec<SkillUpdate>> {
         let mut updates = Vec::new();
         for skill in self.get_skills()? {
             if skill.source.kind != SourceKind::Git {
@@ -1097,7 +1200,7 @@ impl SkillService {
                 skill.source.url.as_deref(),
                 skill.source.tracked_ref.as_deref(),
             ) {
-                match resolve_remote_target(url, tracked_ref).map(|(_, commit)| commit) {
+                match resolve_remote_target(git, url, tracked_ref).map(|(_, commit)| commit) {
                     Some(remote) if Some(&remote) == installed_commit.as_ref() => {
                         (UpdateStatus::Current, Some(remote))
                     }
@@ -1121,7 +1224,7 @@ impl SkillService {
         Ok(updates)
     }
 
-    pub fn update_skill(&self, skill_id: &str) -> DomainResult<SkillUpdate> {
+    pub fn update_skill(&self, skill_id: &str, git: &GitOptions) -> DomainResult<SkillUpdate> {
         let path = self.skills_dir.join(skill_id);
         if git_worktree_is_dirty(&path)? {
             return Err(DomainError::Database(format!(
@@ -1140,8 +1243,8 @@ impl SkillService {
             .tracked_ref
             .clone()
             .ok_or_else(|| DomainError::Database("Tracked Git ref is unavailable".into()))?;
-        let (available_ref, available_commit) = resolve_remote_target(&url, &tracked_ref)
-            .ok_or_else(|| DomainError::Database("Unable to resolve remote Git ref".into()))?;
+        let (available_ref, available_commit) = resolve_remote_target(git, &url, &tracked_ref)
+            .ok_or_else(|| DomainError::Git("无法解析远端 Git 引用".into()))?;
         if record.installed_commit.as_deref() == Some(&available_commit) {
             return Ok(SkillUpdate {
                 skill_id: skill_id.into(),
@@ -1157,12 +1260,9 @@ impl SkillService {
         let backup = self
             .skills_dir
             .join(format!(".{skill_id}-backup-{}", uuid::Uuid::new_v4()));
-        let status = clone_repository(&url, Some(&available_ref), &staging)?;
-        if !status.success() {
+        if let Err(error) = clone_repository(git, &url, Some(&available_ref), &staging) {
             let _ = fs::remove_dir_all(&staging);
-            return Err(DomainError::Database(
-                "git clone command exited with error".into(),
-            ));
+            return Err(error);
         }
         scan_skill_root(skill_id, &staging)?;
         fs::rename(&path, &backup).map_err(|error| DomainError::Database(error.to_string()))?;
@@ -1598,6 +1698,7 @@ fn git_source(path: &Path) -> Option<SkillSourceInfo> {
         url,
         tracked_ref,
         installed_commit,
+        last_checked_at: None,
     })
 }
 
@@ -1708,31 +1809,26 @@ fn git_output(path: &Path, args: &[&str]) -> Option<String> {
 }
 
 fn clone_repository(
+    git: &GitOptions,
     url: &str,
     tracked_ref: Option<&str>,
     destination: &Path,
-) -> DomainResult<std::process::ExitStatus> {
-    let mut command = Command::new("git");
-    command.arg("clone").arg("--depth").arg("1");
+) -> DomainResult<()> {
+    let mut args = vec!["clone".to_string(), "--depth".to_string(), "1".to_string()];
     if let Some(reference) = tracked_ref {
-        command.arg("--branch").arg(reference);
+        args.push("--branch".to_string());
+        args.push(reference.to_string());
     }
-    command.arg(url).arg(destination);
-    #[cfg(target_os = "windows")]
-    command.creation_flags(0x08000000);
-
-    command
-        .status()
-        .map_err(|error| DomainError::Database(format!("Git clone execution error: {error}")))
+    args.push(url.to_string());
+    args.push(destination.to_string_lossy().into_owned());
+    git.output_checked(&args, None, true)?;
+    Ok(())
 }
 
-fn latest_stable_tag(url: &str) -> Option<String> {
-    let mut command = Command::new("git");
-    command.args(["ls-remote", "--tags", "--refs", url]);
-    #[cfg(target_os = "windows")]
-    command.creation_flags(0x08000000);
-
-    let output = command.output().ok()?;
+fn latest_stable_tag(git: &GitOptions, url: &str) -> Option<String> {
+    let output = git
+        .output(&["ls-remote", "--tags", "--refs", url], None, true)
+        .ok()?;
     output.status.success().then_some(())?;
     select_latest_stable_tag(&String::from_utf8(output.stdout).ok()?)
 }
@@ -1809,9 +1905,13 @@ fn git_worktree_is_dirty(path: &Path) -> DomainResult<bool> {
 
     // Check if there are real modifications ignoring CR/LF differences
     let mut cmd1 = Command::new("git");
-    cmd1.arg("-C")
-        .arg(path)
-        .args(["diff", "--quiet", "--ignore-cr-at-eol"]);
+    cmd1.arg("-C").arg(path).args([
+        "-c",
+        "core.filemode=false",
+        "diff",
+        "--quiet",
+        "--ignore-cr-at-eol",
+    ]);
     #[cfg(target_os = "windows")]
     cmd1.creation_flags(0x08000000);
 
@@ -1826,9 +1926,14 @@ fn git_worktree_is_dirty(path: &Path) -> DomainResult<bool> {
 
     // Also check if there are staged differences
     let mut cmd2 = Command::new("git");
-    cmd2.arg("-C")
-        .arg(path)
-        .args(["diff", "--cached", "--quiet", "--ignore-cr-at-eol"]);
+    cmd2.arg("-C").arg(path).args([
+        "-c",
+        "core.filemode=false",
+        "diff",
+        "--cached",
+        "--quiet",
+        "--ignore-cr-at-eol",
+    ]);
     #[cfg(target_os = "windows")]
     cmd2.creation_flags(0x08000000);
 
@@ -1843,7 +1948,9 @@ fn git_worktree_is_dirty(path: &Path) -> DomainResult<bool> {
 
     // Now check for untracked files (excluding ignored ones)
     let mut cmd3 = Command::new("git");
-    cmd3.arg("-C").arg(path).args(["status", "--porcelain"]);
+    cmd3.arg("-C")
+        .arg(path)
+        .args(["-c", "core.filemode=false", "status", "--porcelain"]);
     #[cfg(target_os = "windows")]
     cmd3.creation_flags(0x08000000);
 
@@ -1873,7 +1980,7 @@ fn trust_matches(
     trusted_commit == Some(installed_commit) && (!dirty || installed_commit.starts_with("local-"))
 }
 
-fn remote_commit(url: &str, tracked_ref: &str) -> Option<String> {
+fn remote_commit(git: &GitOptions, url: &str, tracked_ref: &str) -> Option<String> {
     let reference = if tracked_ref.starts_with("refs/") {
         tracked_ref.to_string()
     } else if semantic_version(tracked_ref).is_some() {
@@ -1881,15 +1988,12 @@ fn remote_commit(url: &str, tracked_ref: &str) -> Option<String> {
     } else {
         format!("refs/heads/{tracked_ref}")
     };
-    let mut command = Command::new("git");
-    command.args(["ls-remote", url, &reference]);
+    let mut args = vec!["ls-remote".to_string(), url.to_string(), reference.clone()];
     if reference.starts_with("refs/tags/") {
-        command.arg(format!("{reference}^{{}}"));
+        args.push(format!("{reference}^{{}}"));
     }
-    #[cfg(target_os = "windows")]
-    command.creation_flags(0x08000000);
 
-    let output = command.output().ok()?;
+    let output = git.output(&args, None, true).ok()?;
     if !output.status.success() {
         return None;
     }
@@ -1901,13 +2005,17 @@ fn remote_commit(url: &str, tracked_ref: &str) -> Option<String> {
         .map(ToString::to_string)
 }
 
-fn resolve_remote_target(url: &str, tracked_ref: &str) -> Option<(String, String)> {
+fn resolve_remote_target(
+    git: &GitOptions,
+    url: &str,
+    tracked_ref: &str,
+) -> Option<(String, String)> {
     let target_ref = if semantic_version(tracked_ref).is_some() {
-        latest_stable_tag(url).unwrap_or_else(|| tracked_ref.to_string())
+        latest_stable_tag(git, url).unwrap_or_else(|| tracked_ref.to_string())
     } else {
         tracked_ref.to_string()
     };
-    let commit = remote_commit(url, &target_ref)?;
+    let commit = remote_commit(git, url, &target_ref)?;
     Some((target_ref, commit))
 }
 

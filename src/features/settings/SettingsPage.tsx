@@ -6,11 +6,14 @@ import {
   CheckCircle2,
   ChevronDown,
   Copy,
+  GitBranch,
   Languages,
   Monitor,
   MonitorCog,
   Moon,
+  Network,
   Palette,
+  RefreshCw,
   ShieldCheck,
   Sun,
   TerminalSquare,
@@ -19,8 +22,23 @@ import { useBlocker } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import appIcon from '../../../src-tauri/icons/icon.png';
-import { getHealth, getLaunchPreferences, saveLaunchPreferences } from '../../shared/api/tauriClient';
-import type { LaunchPreferences, TerminalPreference } from '../../shared/api/types';
+import {
+  AppError,
+  getGitEnvironment,
+  getHealth,
+  getLaunchPreferences,
+  getNetworkPreferences,
+  saveLaunchPreferences,
+  saveNetworkPreferences,
+  testGitConnection,
+} from '../../shared/api/tauriClient';
+import type {
+  GitEnvironmentReport,
+  GitProxySource,
+  LaunchPreferences,
+  NetworkPreferences,
+  TerminalPreference,
+} from '../../shared/api/types';
 import { useThemeStore, type ThemePreference } from '../../shared/theme/themeStore';
 import { useLanguageStore } from '../../shared/i18n/languageStore';
 import type { LanguagePreference } from '../../shared/i18n/i18n';
@@ -28,7 +46,7 @@ import { Card } from '../../shared/ui/Card';
 import { PageState } from '../../shared/ui/PageState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 
-type SettingsSection = 'general' | 'launch' | 'about';
+type SettingsSection = 'general' | 'launch' | 'network' | 'about';
 
 const macosTerminals: Array<{ value: TerminalPreference; label: string; detail: string }> = [
   { value: 'auto', label: '自动选择', detail: '启动时选择首个可用终端。' },
@@ -145,6 +163,169 @@ function AboutSettings({ version, loading, error, onRetry }: { version?: string;
   );
 }
 
+const proxySourceKeys: Record<GitProxySource, string> = {
+  manual: 'settings.network.proxySourceManual',
+  environment: 'settings.network.proxySourceEnvironment',
+  system: 'settings.network.proxySourceSystem',
+  none: 'settings.network.proxySourceNone',
+  pac: 'settings.network.proxySourcePac',
+};
+
+function GitEnvironmentStatus({ report, checking, onRefresh }: { report?: GitEnvironmentReport; checking: boolean; onRefresh: () => void }) {
+  const { t } = useTranslation();
+  if (checking) return <p className="muted-copy">{t('settings.network.gitDescription')}</p>;
+  if (!report) return <p className="settings-error-copy">{t('settings.network.gitMissing')}</p>;
+  return (
+    <div className="git-environment-status">
+      {report.available ? (
+        <p>{t('settings.network.gitAvailable', { version: report.version ?? '' })}</p>
+      ) : (
+        <p className="import-warning">
+          {t('settings.network.gitMissing')}{' '}
+          <a href="https://git-scm.com/download/win" target="_blank" rel="noreferrer">{t('settings.network.gitInstall')}</a>
+        </p>
+      )}
+      {report.executable && <p className="muted-copy">{report.executable}</p>}
+      {report.error && <p className="settings-error-copy">{report.error}</p>}
+      {report.proxy ? (
+        <p>{t('settings.network.proxyActive', { proxy: report.proxy, source: t(proxySourceKeys[report.proxySource]) })}</p>
+      ) : report.proxySource === 'pac' ? (
+        <p className="import-warning">{t('settings.network.pacWarning')}</p>
+      ) : (
+        <p>{t('settings.network.proxyNone')}</p>
+      )}
+      <button type="button" className="button button--secondary" onClick={onRefresh}>
+        <RefreshCw size={14} /> {t('settings.network.refresh')}
+      </button>
+    </div>
+  );
+}
+
+function NetworkSettings() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const preferences = useQuery({ queryKey: ['networkPreferences'], queryFn: getNetworkPreferences });
+  const environment = useQuery({ queryKey: ['gitEnvironment'], queryFn: getGitEnvironment });
+  const [draft, setDraft] = useState<NetworkPreferences | null>(null);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (preferences.data) setDraft(preferences.data);
+  }, [preferences.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: saveNetworkPreferences,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(['networkPreferences'], saved);
+      setDraft(saved);
+      setMessage(t('settings.network.saved'));
+      void queryClient.invalidateQueries({ queryKey: ['gitEnvironment'] });
+    },
+    onError: (error) => {
+      setMessage(error instanceof AppError ? error.details ?? error.message : t('settings.network.saveFailed'));
+    },
+  });
+  const testMutation = useMutation({ mutationFn: testGitConnection });
+
+  if (preferences.isLoading) return <PageState state="loading" label={t('settings.network.title')} />;
+  if (preferences.isError || !draft) {
+    return <PageState state="error" title={t('settings.network.title')} description={t('settings.network.saveFailed')} onRetry={() => void preferences.refetch()} />;
+  }
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(preferences.data);
+  const update = (changes: Partial<NetworkPreferences>) => {
+    setMessage('');
+    setDraft((current) => current ? { ...current, ...changes } : current);
+  };
+  const modes: Array<{ value: NetworkPreferences['gitProxyMode']; label: string; detail: string }> = [
+    { value: 'system', label: t('settings.network.modeSystem'), detail: t('settings.network.modeSystemDetail') },
+    { value: 'direct', label: t('settings.network.modeDirect'), detail: t('settings.network.modeDirectDetail') },
+    { value: 'manual', label: t('settings.network.modeManual'), detail: t('settings.network.modeManualDetail') },
+  ];
+
+  return (
+    <div className="settings-network" aria-labelledby="network-settings-title">
+      <div className="settings-section-intro">
+        <div className="settings-section-icon"><Network aria-hidden="true" size={20} /></div>
+        <div>
+          <h2 id="network-settings-title">{t('settings.network.title')}</h2>
+          <p>{t('settings.network.description')}</p>
+        </div>
+      </div>
+
+      <div className="settings-grid settings-grid--launch">
+        <Card className="launch-preferences-card">
+          <div className="settings-card-heading"><GitBranch size={18} /><div><h2>{t('settings.network.proxyTitle')}</h2><p>{t('settings.network.proxyDescription')}</p></div></div>
+          <fieldset className="terminal-choice-grid">
+            <legend className="sr-only">{t('settings.network.proxyMode')}</legend>
+            {modes.map((mode) => (
+              <label className={`terminal-choice${draft.gitProxyMode === mode.value ? ' is-selected' : ''}`} key={mode.value}>
+                <input
+                  type="radio"
+                  name="git-proxy-mode"
+                  value={mode.value}
+                  checked={draft.gitProxyMode === mode.value}
+                  onChange={() => update({ gitProxyMode: mode.value })}
+                />
+                <span><strong>{mode.label}</strong><small>{mode.detail}</small></span>
+                {draft.gitProxyMode === mode.value && <CheckCircle2 aria-hidden="true" size={18} />}
+              </label>
+            ))}
+          </fieldset>
+          {draft.gitProxyMode === 'manual' && (
+            <div className="settings-select-row">
+              <label htmlFor="git-proxy-url"><strong>{t('settings.network.manualUrl')}</strong><small>{t('settings.network.manualPlaceholder')}</small></label>
+              <input
+                id="git-proxy-url"
+                value={draft.gitProxyUrl}
+                placeholder={t('settings.network.manualPlaceholder')}
+                onChange={(event) => update({ gitProxyUrl: event.target.value })}
+              />
+            </div>
+          )}
+          <div className="settings-network__actions">
+            <button
+              type="button"
+              className="button button--primary"
+              disabled={!dirty || saveMutation.isPending}
+              onClick={() => saveMutation.mutate(draft)}
+            >
+              {saveMutation.isPending ? t('settings.network.saving') : t('settings.network.save')}
+            </button>
+            {message && <span className="muted-copy" role="status">{message}</span>}
+          </div>
+        </Card>
+
+        <Card className="launch-preferences-card">
+          <div className="settings-card-heading"><ShieldCheck size={18} /><div><h2>{t('settings.network.gitTitle')}</h2><p>{t('settings.network.gitDescription')}</p></div></div>
+          <GitEnvironmentStatus
+            report={environment.data}
+            checking={environment.isLoading}
+            onRefresh={() => void environment.refetch()}
+          />
+          <div className="settings-network__actions">
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={testMutation.isPending}
+              onClick={() => testMutation.mutate()}
+            >
+              {testMutation.isPending ? t('settings.network.testing') : t('settings.network.testConnection')}
+            </button>
+            {testMutation.data && (
+              <span className={testMutation.data.success ? 'muted-copy' : 'settings-error-copy'} role="status">
+                {testMutation.data.success
+                  ? t('settings.network.testSuccess', { ms: testMutation.data.elapsedMs })
+                  : `${t('settings.network.testFailed')}：${testMutation.data.message ?? ''}`}
+              </span>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function LeaveSettingsDialog({ saving, error, onSave, onDiscard, onContinue }: { saving: boolean; error: boolean; onSave: () => void; onDiscard: () => void; onContinue: () => void }) {
   return (
     <div className="settings-dialog-backdrop">
@@ -170,9 +351,10 @@ export function SettingsPage() {
   const sections: Array<{ id: SettingsSection; label: string }> = [
     { id: 'general', label: t('settings.sections.general') },
     { id: 'launch', label: t('settings.sections.launch') },
+    { id: 'network', label: t('settings.sections.network') },
     { id: 'about', label: t('settings.sections.about') },
   ];
-  const health = useQuery({ queryKey: ['health'], queryFn: getHealth, enabled: activeSection !== 'general' });
+  const health = useQuery({ queryKey: ['health'], queryFn: getHealth, enabled: activeSection === 'launch' || activeSection === 'about' });
   const preferences = useQuery({ queryKey: ['launchPreferences'], queryFn: getLaunchPreferences, enabled: activeSection === 'launch' });
   const [draft, setDraft] = useState<LaunchPreferences | null>(null);
 
@@ -271,6 +453,8 @@ export function SettingsPage() {
             )}
           </>
         )}
+
+        {activeSection === 'network' && <NetworkSettings />}
 
         {activeSection === 'about' && <AboutSettings version={health.data?.version} loading={health.isLoading} error={health.isError} onRetry={() => void health.refetch()} />}
       </div>

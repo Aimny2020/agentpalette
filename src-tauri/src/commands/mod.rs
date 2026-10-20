@@ -29,6 +29,10 @@ impl From<DomainError> for CommandError {
                 code: "operation_unavailable".into(),
                 details: Some(details),
             },
+            DomainError::Git(details) => Self {
+                code: "git_unavailable".into(),
+                details: Some(details),
+            },
         }
     }
 }
@@ -46,5 +50,13 @@ mod tests {
         assert_eq!(error.code, "database_unavailable");
         assert_eq!(error.code, "database_unavailable");
         assert_eq!(error.details.as_deref(), Some("file is locked"));
+    }
+
+    #[test]
+    fn command_error_maps_git_failures() {
+        let error = CommandError::from(DomainError::Git("connection reset".into()));
+
+        assert_eq!(error.code, "git_unavailable");
+        assert_eq!(error.details.as_deref(), Some("connection reset"));
     }
 }

@@ -4,7 +4,16 @@ use crate::domain::error::DomainError;
 use crate::domain::skill::{
     Category, ImportInspection, Skill, SkillDescriptionRecord, SkillUpdate,
 };
+use crate::infrastructure::git_cli::GitOptions;
 use tauri::State;
+
+fn git_options(state: &AppState) -> Result<GitOptions, CommandError> {
+    let preferences = state
+        .settings
+        .get_network_preferences()
+        .map_err(CommandError::from)?;
+    GitOptions::resolve(&preferences).map_err(CommandError::from)
+}
 
 #[tauri::command]
 pub async fn get_skills(state: State<'_, AppState>) -> Result<Vec<Skill>, CommandError> {
@@ -33,15 +42,17 @@ pub async fn import_skill(
     source: String,
     import_type: String,
 ) -> Result<String, CommandError> {
+    let service = state.skills.clone();
     if import_type == "git" {
-        state
-            .skills
-            .import_git_url(&source)
+        let options = git_options(&state)?;
+        tauri::async_runtime::spawn_blocking(move || service.import_git_url(&source, &options))
+            .await
+            .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
             .map_err(CommandError::from)
     } else {
-        state
-            .skills
-            .import_local_folder(&source)
+        tauri::async_runtime::spawn_blocking(move || service.import_local_folder(&source))
+            .await
+            .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
             .map_err(CommandError::from)
     }
 }
@@ -52,10 +63,19 @@ pub async fn inspect_skill_import(
     source: String,
     import_type: String,
 ) -> Result<ImportInspection, CommandError> {
-    state
-        .skills
-        .inspect_import(&source, &import_type)
-        .map_err(CommandError::from)
+    let service = state.skills.clone();
+    if import_type == "git" {
+        let options = git_options(&state)?;
+        tauri::async_runtime::spawn_blocking(move || service.inspect_git_import(&source, &options))
+            .await
+            .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
+            .map_err(CommandError::from)
+    } else {
+        tauri::async_runtime::spawn_blocking(move || service.inspect_local_import(&source))
+            .await
+            .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
+            .map_err(CommandError::from)
+    }
 }
 
 #[tauri::command]
@@ -73,9 +93,11 @@ pub async fn delete_skill(
 pub async fn check_skill_updates(
     state: State<'_, AppState>,
 ) -> Result<Vec<SkillUpdate>, CommandError> {
-    state
-        .skills
-        .check_skill_updates()
+    let service = state.skills.clone();
+    let options = git_options(&state)?;
+    tauri::async_runtime::spawn_blocking(move || service.check_skill_updates(&options))
+        .await
+        .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
         .map_err(CommandError::from)
 }
 
@@ -84,9 +106,11 @@ pub async fn update_skill(
     state: State<'_, AppState>,
     skill_id: String,
 ) -> Result<SkillUpdate, CommandError> {
-    state
-        .skills
-        .update_skill(&skill_id)
+    let service = state.skills.clone();
+    let options = git_options(&state)?;
+    tauri::async_runtime::spawn_blocking(move || service.update_skill(&skill_id, &options))
+        .await
+        .map_err(|error| CommandError::from(DomainError::Operation(error.to_string())))?
         .map_err(CommandError::from)
 }
 

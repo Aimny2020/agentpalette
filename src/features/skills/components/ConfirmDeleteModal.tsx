@@ -40,15 +40,18 @@ export function ConfirmDeleteModal({ skill, onClose, onConfirm }: Props) {
   const isOccupied = occupiedProjects !== null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-body compact-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={isDeleting ? undefined : onClose}>
+      <div
+        className="modal-body compact-modal confirm-delete-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {isOccupied ? (
-              <ShieldAlert size={20} style={{ color: 'var(--color-danger)' }} />
-            ) : (
-              <AlertTriangle size={20} style={{ color: '#ff9800' }} />
-            )}
+          <div className="confirm-delete-heading">
+            <span
+              className={`confirm-delete-heading__icon ${isOccupied ? 'is-danger' : 'is-warning'}`}
+            >
+              {isOccupied ? <ShieldAlert size={18} /> : <AlertTriangle size={18} />}
+            </span>
             <h3>{isOccupied ? t('skills.occupiedTitle') : t('skills.deleteTitle')}</h3>
           </div>
           <button className="close-btn" onClick={onClose} disabled={isDeleting}>
@@ -56,44 +59,36 @@ export function ConfirmDeleteModal({ skill, onClose, onConfirm }: Props) {
           </button>
         </div>
 
-        <div style={{ padding: 'var(--space-3)' }}>
+        <div className="confirm-delete-body">
           {isOccupied ? (
             <>
-              <p style={{ margin: '0 0 var(--space-2) 0', fontSize: '0.9rem', color: 'var(--color-ink)', lineHeight: '1.5' }}>
-                {t('skills.occupiedIntro')}
+              <p className="confirm-delete-copy">
+                {t('skills.occupiedIntro', { name: skill.metadata.name })}
               </p>
               <div className="occupied-projects-list">
                 <ul>
-                  {occupiedProjects.map((proj) => (
-                    <li key={proj} style={{ fontSize: '0.88rem', color: 'var(--color-ink)', marginBottom: '4px' }}>
-                      {proj}
-                    </li>
+                  {occupiedProjects.map((project) => (
+                    <li key={project}>{project}</li>
                   ))}
                 </ul>
               </div>
-              <p style={{ margin: 'var(--space-2) 0 0 0', fontSize: '0.85rem', color: 'var(--color-muted)', lineHeight: '1.5' }}>
-                {t('skills.occupiedDetail')}
-              </p>
+              <p className="confirm-delete-detail">{t('skills.occupiedDetail')}</p>
             </>
           ) : (
             <>
-              <p style={{ margin: '0 0 var(--space-2) 0', fontSize: '0.9rem', color: 'var(--color-ink)', lineHeight: '1.5' }}>
+              <p className="confirm-delete-copy">
                 {t('skills.deletePrompt', { name: skill.metadata.name })}
               </p>
-              <p style={{ margin: '0', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
-                {t('skills.deleteWarning')}
-              </p>
+              <p className="confirm-delete-detail">{t('skills.deleteWarning')}</p>
             </>
           )}
 
           {errorMessage && (
-            <p style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginTop: '12px', margin: '12px 0 0 0' }}>
-              {errorMessage}
-            </p>
+            <p className="confirm-delete-error" role="alert">{errorMessage}</p>
           )}
         </div>
 
-        <div className="actions-footer" style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)' }}>
+        <div className="actions-footer confirm-delete-footer">
           <button
             type="button"
             className="button button--secondary"

@@ -73,6 +73,7 @@ pub struct SkillSourceInfo {
     pub url: Option<String>,
     pub tracked_ref: Option<String>,
     pub installed_commit: Option<String>,
+    pub last_checked_at: Option<String>,
 }
 
 impl SkillSourceInfo {
@@ -82,6 +83,7 @@ impl SkillSourceInfo {
             url: None,
             tracked_ref: None,
             installed_commit: None,
+            last_checked_at: None,
         }
     }
 }

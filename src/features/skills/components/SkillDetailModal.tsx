@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Download, Package, ShieldCheck, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Skill, SkillMember, Category, SkillUpdateStatus } from '../../../shared/api/types';
 import { saveCustomDescription } from '../../../shared/api/tauriClient';
 
@@ -24,8 +25,28 @@ export function SkillDetailModal({
   onTrust,
   onInstallUpdate,
 }: Props) {
+  const { t } = useTranslation();
   const [catId, setCatId] = useState(skill.category_id || '');
   const [selectedMember, setSelectedMember] = useState<SkillMember | undefined>(initialMember);
+
+  const isGit = skill.source.kind === 'git';
+  const sourceLabel = isGit
+    ? skill.source.url?.includes('github.com')
+      ? t('skills.githubSource')
+      : t('skills.gitRepositorySource')
+    : t('skills.localSource');
+  const isLocallyModified =
+    updateStatus === 'dirty' || skill.source.installed_commit?.startsWith('local-');
+  const commitLabel = isLocallyModified
+    ? t('skills.locallyModified')
+    : skill.source.installed_commit?.slice(0, 7) ?? t('skills.unknownCommit');
+  const checkedDate = skill.source.last_checked_at
+    ? new Date(skill.source.last_checked_at)
+    : null;
+  const checkedLabel =
+    checkedDate && !Number.isNaN(checkedDate.getTime())
+      ? checkedDate.toLocaleString()
+      : skill.source.last_checked_at;
 
   // Track custom descriptions for current editing target
   const getTargetInitialDesc = (member?: SkillMember) => {
@@ -160,7 +181,58 @@ export function SkillDetailModal({
                 {skill.warnings.map((warning) => <p key={warning}>{warning}</p>)}
               </div>
             )}
-            
+
+            <div className="skill-source-panel">
+              <h3>{t('skills.sourceTitle')}</h3>
+              <div className="skill-source-panel__row">
+                <span>{t('skills.sourceType')}</span>
+                <strong>{sourceLabel}</strong>
+              </div>
+              {skill.metadata.author && (
+                <div className="skill-source-panel__row">
+                  <span>{t('skills.sourceAuthor')}</span>
+                  <span>{skill.metadata.author}</span>
+                </div>
+              )}
+              {isGit ? (
+                <>
+                  {skill.source.url && (
+                    <div className="skill-source-panel__row">
+                      <span>{t('skills.sourceRepo')}</span>
+                      {skill.source.url.startsWith('http') ? (
+                        <a href={skill.source.url} target="_blank" rel="noreferrer">
+                          {skill.source.url.replace(/^https?:\/\//, '').replace(/\.git$/, '')}
+                        </a>
+                      ) : (
+                        <code>{skill.source.url}</code>
+                      )}
+                    </div>
+                  )}
+                  {skill.source.tracked_ref && (
+                    <div className="skill-source-panel__row">
+                      <span>{t('skills.sourceRef')}</span>
+                      <code>{skill.source.tracked_ref}</code>
+                    </div>
+                  )}
+                  <div className="skill-source-panel__row">
+                    <span>{t('skills.sourceCommit')}</span>
+                    <code>{commitLabel}</code>
+                  </div>
+                  {checkedLabel && (
+                    <div className="skill-source-panel__row">
+                      <span>{t('skills.sourceLastChecked')}</span>
+                      <span>{checkedLabel}</span>
+                    </div>
+                  )}
+                  {isLocallyModified && (
+                    <p className="muted-copy">{t('skills.updateBlockedHint')}</p>
+                  )}
+                </>
+              ) : (
+                <p className="muted-copy">{t('skills.localSourceHint')}</p>
+              )}
+            </div>
+
             {!selectedMember && (
               <div className="form-group">
                 <label>设置分类</label>

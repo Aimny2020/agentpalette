@@ -39,7 +39,94 @@ const mockUntrustedSkill: Skill = {
   html_content: '<p>Skill doc</p>',
 };
 
+const mockGitSkill: Skill = {
+  ...mockUntrustedSkill,
+  id: 'git-skill',
+  metadata: {
+    name: 'Git Skill',
+    description: 'A Skill imported from GitHub',
+    version: '2.0.0',
+  },
+  source: {
+    kind: 'git',
+    url: 'https://github.com/example/git-skill',
+    tracked_ref: 'main',
+    installed_commit: 'abcdef123',
+  },
+  update_status: 'current',
+  has_executable_content: false,
+  trusted: true,
+};
+
 describe('SkillsPage', () => {
+  it('filters skills by import source', async () => {
+    vi.mocked(tauriClient.getSkills).mockResolvedValue([mockUntrustedSkill, mockGitSkill]);
+    vi.mocked(tauriClient.getCategories).mockResolvedValue([]);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SkillsPage />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByText('Test Skill')).toBeInTheDocument();
+    expect(screen.getByText('Git Skill')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Local/ }));
+    expect(screen.getByText('Test Skill')).toBeInTheDocument();
+    expect(screen.queryByText('Git Skill')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Git/ }));
+    expect(screen.getByText('Git Skill')).toBeInTheDocument();
+    expect(screen.queryByText('Test Skill')).not.toBeInTheDocument();
+  });
+
+  it('uses the designed in-app dialog when a skill is in use', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    vi.mocked(tauriClient.getSkills).mockResolvedValue([mockUntrustedSkill]);
+    vi.mocked(tauriClient.getCategories).mockResolvedValue([]);
+    vi.mocked(tauriClient.deleteSkill).mockRejectedValue({
+      message: '本地数据库暂时不可用，请重试。',
+      details: 'Skill Pack is enabled in projects: Project A (/tmp/a)',
+    });
+    vi.mocked(tauriClient.deleteSkillEverywhere).mockResolvedValue(undefined);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <SkillsPage />
+      </QueryClientProvider>
+    );
+
+    await screen.findByText('Test Skill');
+    const deleteButton = container.querySelector('.delete-btn');
+    expect(deleteButton).not.toBeNull();
+    fireEvent.click(deleteButton!);
+
+    fireEvent.click(await screen.findByText('Confirm deletion'));
+
+    expect(await screen.findByText('This Skill is in use')).toBeInTheDocument();
+    expect(screen.getByText('Project A (/tmp/a)')).toBeInTheDocument();
+    expect(confirmSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Remove everywhere and delete'));
+    await waitFor(() => {
+      expect(tauriClient.deleteSkillEverywhere).toHaveBeenCalledWith(
+        'test-skill',
+        expect.anything(),
+      );
+    });
+
+    confirmSpy.mockRestore();
+  });
+
   it('updates detail modal to "已信任此版本" after clicking trust button', async () => {
     vi.mocked(tauriClient.getSkills).mockResolvedValue([mockUntrustedSkill]);
     vi.mocked(tauriClient.getSkillDetail).mockResolvedValue(mockUntrustedSkill);

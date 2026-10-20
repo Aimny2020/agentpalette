@@ -37,6 +37,70 @@ describe('SkillCard', () => {
     expect(screen.getByText('13 Skills')).toBeInTheDocument();
     expect(screen.getByText('有更新')).toBeInTheDocument();
     expect(screen.getByText('需要信任')).toBeInTheDocument();
+    expect(screen.getByText('GitHub')).toBeInTheDocument();
+    expect(screen.queryByText(/abcdef1/)).not.toBeInTheDocument();
+  });
+
+  it('marks local imports without commit information', () => {
+    const localSkill = {
+      ...pack,
+      source: { kind: 'local' as const },
+      update_status: 'not_applicable' as const,
+    };
+
+    render(
+      <SkillCard
+        skill={localSkill}
+        categoryName="设计"
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Local')).toBeInTheDocument();
+    expect(screen.queryByText(/GitHub/)).not.toBeInTheDocument();
+  });
+
+  it('shows a dirty Git skill as locally modified instead of a content fingerprint', () => {
+    const dirtySkill = {
+      ...pack,
+      source: {
+        kind: 'git' as const,
+        url: 'https://github.com/example/taste-skill',
+        tracked_ref: 'main',
+        installed_commit: 'local-deadbeef',
+      },
+      update_status: 'dirty' as const,
+    };
+
+    render(
+      <SkillCard
+        skill={dirtySkill}
+        categoryName="设计"
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('GitHub')).toBeInTheDocument();
+    expect(screen.getByText('本地已修改')).toBeInTheDocument();
+    expect(screen.queryByText(/local-dea/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/main/)).not.toBeInTheDocument();
+  });
+
+  it('keeps author metadata out of the card', () => {
+    const authoredSkill = {
+      ...pack,
+      metadata: { ...pack.metadata, author: 'leonxlnx' },
+    };
+
+    render(
+      <SkillCard
+        skill={authoredSkill}
+        categoryName="设计"
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/leonxlnx/)).not.toBeInTheDocument();
   });
 
   it('renders custom description and custom badge if provided', () => {

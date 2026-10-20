@@ -29,6 +29,32 @@ export interface LaunchPreferences {
   allowCopyCommandFallback: boolean;
 }
 
+export type GitProxyMode = 'system' | 'direct' | 'manual';
+
+export interface NetworkPreferences {
+  gitProxyMode: GitProxyMode;
+  gitProxyUrl: string;
+}
+
+export type GitProxySource = 'manual' | 'environment' | 'system' | 'none' | 'pac';
+
+export interface GitEnvironmentReport {
+  available: boolean;
+  version: string | null;
+  executable: string | null;
+  proxy: string | null;
+  proxySource: GitProxySource;
+  pacDetected: boolean;
+  error: string | null;
+}
+
+export interface GitConnectionReport {
+  success: boolean;
+  elapsedMs: number;
+  proxy: string | null;
+  message: string | null;
+}
+
 export type LocalAgentStatus = 'ready' | 'missing';
 
 export interface LocalAgent {
@@ -90,6 +116,7 @@ export interface SkillSourceInfo {
   url?: string;
   tracked_ref?: string;
   installed_commit?: string;
+  last_checked_at?: string;
 }
 
 export interface Skill {
